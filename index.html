@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="description" content="Fourteen Hudson Valley orchards on a hand-inked map, with drive times from Williamsburg.">
+<meta property="og:title" content="Fine, I’ll Pick">
+<meta property="og:description" content="Fourteen Hudson Valley orchards on a hand-inked map. Pick one.">
+<title>Fine, I’ll Pick</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Hanken+Grotesk:wght@300;400;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a full-bleed hand-inked map with paper cards floating on it. Phone: title chip top-left, zoom top-right, a bottom sheet that peeks with the selected orchard and a swipeable row of all fourteen, and pulls up to the full detail and list. Desktop: list floats left, detail card floats bottom-right. */
+:root {
+  --bg: #F4F4F1;
+  --paper: #FBFBF8;
+  --ink: #16171A;
+  --muted: #62656B;
+  --blue: #B8232B;
+  --blue-ink: #FFFFFF;
+  --hl: #F2CF7E;
+  --water: #CBE0EE;
+  --land: #FBFBF8;
+  --lime: #F7D3CA;
+  --lime-ink: #16171A;
+  --peach: #F6DFC4;
+  --sky: #CBDDE8;
+  --shadow: rgba(22, 23, 26, .16);
+  --focus: #1B6FD6;
+  --pen: #2417C9;
+  --splash: #E6E6E2;
+  --leaf: #A7CF7C;
+  --hand: 'Caveat', 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive;
+  --sans: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --blob: 22px 9px 19px 10px / 10px 19px 9px 22px;
+  --blob2: 9px 20px 10px 18px / 18px 10px 20px 9px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161A; --paper: #1D2025; --ink: #F0EFEA; --muted: #A5A9B0; --blue: #FF7A6B; --blue-ink: #1A0C0A; --hl: #8A6D1F;
+    --water: #1F2D3B; --land: #23272D; --lime: #5A2B2A; --lime-ink: #F6E9E4; --peach: #4D3A26; --sky: #26384A;
+    --shadow: rgba(0, 0, 0, .5); --focus: #7DB4FF; --pen: #A9A2FF; --splash: #1B1E22; --leaf: #7FB05A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161A; --paper: #1D2025; --ink: #F0EFEA; --muted: #A5A9B0; --blue: #FF7A6B; --blue-ink: #1A0C0A; --hl: #8A6D1F;
+  --water: #1F2D3B; --land: #23272D; --lime: #5A2B2A; --lime-ink: #F6E9E4; --peach: #4D3A26; --sky: #26384A;
+  --shadow: rgba(0, 0, 0, .5); --focus: #7DB4FF; --pen: #A9A2FF; --splash: #1B1E22; --leaf: #7FB05A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; font-weight: 400; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px dashed var(--focus); outline-offset: 3px; }
+.mono { font-family: var(--mono); }
+
+/* hand-inked outline: the border lives on ::before so only the line wobbles, not the text */
+.sketch { position: relative; border-radius: var(--r, var(--blob)); }
+.sketch::before {
+  content: ""; position: absolute; inset: 0; border: 2px solid var(--ink); border-radius: var(--r, var(--blob));
+  pointer-events: none; z-index: 1;
+}
+.wob::before { filter: url(#rough); }
+
+
+/* opening note */
+#splash { position: fixed; inset: 0; z-index: 50; background: var(--splash); display: flex; overflow: auto; padding: calc(20px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); transition: opacity .28s ease; }
+#splash.gone { opacity: 0; pointer-events: none; }
+#splash .note { margin: auto; width: min(100%, 520px); background: var(--bg); padding: 22px 22px 22px; display: flex; flex-direction: column; gap: 14px; --r: 34px 12px 30px 14px / 16px 30px 12px 34px; }
+#splash .note::before { border-color: var(--pen); border-width: 2.5px; }
+#splash .tag-line { font: 400 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--pen); margin: 0; }
+.hand { margin: 0; font-family: var(--hand); font-weight: 500; font-size: clamp(25px, 6.6vw, 33px); line-height: 1.2; color: var(--pen); text-wrap: pretty; }
+.hand i { font-style: normal; }
+.hold { width: 128px; height: auto; align-self: flex-end; margin: -2px 6px 0 0; transform: rotate(4deg); }
+.hold path, .hold rect, .hold ellipse, .hold circle { stroke: var(--pen); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.hold .pupil { fill: var(--pen); stroke: none; }
+.hold .apple { fill: var(--blue); }
+.hold .leaf { fill: var(--leaf); }
+.hold .skin { fill: var(--bg); }
+.hold .spark { fill: none; }
+#splash .btn.go { font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) { .hold { animation: wag 2s ease-in-out infinite; transform-origin: 50% 92%; } }
+@keyframes wag { 0%, 100% { transform: rotate(3deg); } 50% { transform: rotate(-4deg); } }
+
+/* stage */
+#stage { position: fixed; inset: 0; z-index: 0; background: var(--water); }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#map.dragging { cursor: grabbing; }
+.water { fill: var(--water); }
+.landfill { fill: var(--land); fill-rule: evenodd; stroke: none; }
+.landline { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; stroke-linecap: round; opacity: .7; fill-rule: evenodd; }
+.river { fill: none; stroke: var(--water); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+.riverline { fill: none; stroke: var(--ink); stroke-width: 1.2; opacity: .45; stroke-dasharray: 1.5 5; stroke-linecap: round; }
+.tree path, .tree circle { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: .5; }
+.tree .fruit { fill: var(--blue); stroke: none; opacity: .95; }
+.town text { font: 400 12px var(--mono); letter-spacing: .02em; fill: var(--ink); paint-order: stroke; stroke: var(--land); stroke-width: 4px; stroke-linejoin: round; text-transform: uppercase; }
+.town circle { fill: var(--ink); }
+.town.sea text { font-style: italic; font-family: var(--sans); font-weight: 300; font-size: 15px; text-transform: none; fill: var(--muted); stroke: var(--water); }
+.origin path { fill: var(--hl); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.origin text { font: 600 14px var(--sans); fill: var(--ink); paint-order: stroke; stroke: var(--land); stroke-width: 4px; stroke-linejoin: round; }
+.route { fill: none; stroke: var(--ink); stroke-linecap: round; }
+.pin { cursor: pointer; }
+.pin .stem { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; fill: none; }
+.pin .tip { fill: var(--ink); }
+.pin .box { fill: var(--paper); stroke: var(--ink); stroke-width: 2.2; }
+.pin .num { font: 500 13px var(--mono); fill: var(--ink); text-anchor: middle; pointer-events: none; }
+.pin .hit { fill: rgba(0, 0, 0, 0); }
+.pin .lbl { display: none; font: 600 16px var(--sans); fill: var(--ink); paint-order: stroke; stroke: var(--land); stroke-width: 5px; stroke-linejoin: round; pointer-events: none; }
+.pin.sel .box { fill: var(--blue); }
+.pin.sel .num { fill: var(--blue-ink); }
+.pin.sel .lbl { display: block; }
+.pin:focus-visible { outline: none; }
+.pin:focus-visible .box { stroke: var(--focus); stroke-width: 4; }
+
+/* floating bits */
+.left { position: fixed; z-index: 3; left: max(12px, env(safe-area-inset-left, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+.left > * { pointer-events: auto; }
+.hud { --r: 40px 14px 34px 16px / 18px 34px 14px 40px; background: var(--paper); padding: 10px 22px 12px 18px; width: fit-content; max-width: 100%; }
+.eyebrow { font: 400 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-weight: 300; font-size: 30px; line-height: 1.02; letter-spacing: -.03em; }
+.mapctl { position: fixed; z-index: 4; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 8px; }
+.mapctl button { position: relative; width: 44px; height: 44px; background: var(--paper); font: 400 22px/1 var(--sans); display: grid; place-items: center; --r: var(--blob2); }
+.mapctl button.all { font: 500 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.legend { position: fixed; z-index: 3; display: none; left: 420px; bottom: 16px; background: var(--paper); padding: 5px 12px; font: 400 11px var(--mono); letter-spacing: .03em; text-transform: uppercase; color: var(--muted); gap: 4px 14px; flex-wrap: wrap; --r: var(--blob2); }
+.legend i { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--ink); background: var(--paper); border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.legend i.on { background: var(--blue); }
+.legend i.dash { width: 18px; height: 0; border: 0; border-top: 3px dotted var(--ink); border-radius: 0; background: none; vertical-align: 3px; }
+
+/* list panel */
+#listpanel { background: var(--paper); min-height: 0; --r: 26px 10px 22px 12px / 12px 22px 10px 26px; }
+#listpanel .scroll { padding: 16px 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+.lede { margin: 0; color: var(--muted); font-weight: 300; font-size: 15px; text-wrap: pretty; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.seg button { font: 400 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; padding: 5px 10px; border: 1.5px solid var(--ink); border-radius: 999px 60% 999px 70% / 70% 999px 60% 999px; }
+.seg button[aria-checked="true"] { background: var(--lime); color: var(--lime-ink); }
+.toggle { display: inline-flex; gap: 7px; align-items: center; font: 400 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--blue); }
+.count { font: 400 11px var(--mono); color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.row { position: relative; width: 100%; text-align: left; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 0 12px; align-items: start; padding: 11px 10px; border-bottom: 1.5px dashed color-mix(in srgb, var(--ink) 40%, transparent); }
+.list li:last-child .row { border-bottom: 0; }
+.row[aria-pressed="true"] { background: var(--lime); color: var(--lime-ink); border-bottom-color: transparent; --r: 18px 8px 16px 9px / 9px 16px 8px 18px; }
+.row[aria-pressed="true"]::before { content: ""; position: absolute; inset: 0; border: 2px solid var(--ink); border-radius: var(--r); pointer-events: none; }
+.row[aria-pressed="true"] { border-radius: var(--r); }
+.row .n { width: 26px; height: 26px; border: 1.8px solid var(--ink); border-radius: 50% 46% 54% 48% / 48% 54% 46% 52%; display: grid; place-items: center; font: 500 12px var(--mono); }
+.row[aria-pressed="true"] .n { background: var(--blue); color: var(--blue-ink); border-color: var(--ink); }
+.r-main { min-width: 0; }
+.r-name { font-weight: 600; font-size: 16px; line-height: 1.2; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
+.tag { font: 400 10px var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border: 1.3px solid var(--ink); border-radius: 60% 999px 70% 999px / 999px 60% 999px 70%; background: var(--sky); color: var(--ink); }
+.tag.warn { background: var(--peach); }
+.r-town { display: block; font: 400 10.5px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
+.row[aria-pressed="true"] .r-town { color: var(--lime-ink); opacity: .75; }
+.r-do { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 300; margin-top: 3px; }
+.r-drive { text-align: right; white-space: nowrap; }
+.r-drive b { display: block; font-weight: 300; font-size: 24px; line-height: 1; letter-spacing: -.03em; }
+.r-drive span { font: 400 11px var(--mono); color: var(--muted); }
+.row[aria-pressed="true"] .r-drive span { color: var(--lime-ink); opacity: .75; }
+.empty { padding: 18px; color: var(--muted); }
+.notes { display: grid; gap: 8px; font-size: 12.5px; color: var(--muted); font-weight: 300; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 40%, transparent); padding-top: 12px; }
+.notes p { margin: 0; text-wrap: pretty; }
+.notes ul { margin: 0; padding-left: 18px; }
+
+/* detail card */
+.card { background: var(--paper); --r: 26px 10px 22px 12px / 12px 22px 10px 26px; }
+.card .scroll { padding: 16px 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.card h2 { margin: 0; font-weight: 300; font-size: 32px; line-height: 1; letter-spacing: -.035em; text-wrap: balance; }
+.card .sub { font: 400 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { padding: 8px 10px 9px; min-width: 0; border-radius: var(--blob2); color: var(--ink); }
+.stat:nth-child(1) { background: var(--peach); }
+.stat:nth-child(2) { background: var(--sky); }
+.stat:nth-child(3) { background: var(--lime); color: var(--lime-ink); }
+.stat small { display: block; font: 400 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.stat b { display: block; font-weight: 300; font-size: 26px; line-height: 1.05; letter-spacing: -.03em; }
+.stat span { font: 400 10.5px var(--mono); opacity: .75; }
+.home { margin: 0; color: var(--muted); font-weight: 300; }
+.addr { display: flex; gap: 10px; align-items: center; justify-content: space-between; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 40%, transparent); padding-top: 12px; }
+.addr address { font-style: normal; user-select: all; -webkit-user-select: all; min-width: 0; }
+.btn { position: relative; padding: 8px 14px; font: 500 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; background: var(--paper); color: var(--ink); --r: var(--blob2); }
+.btn:active { transform: translateY(1px); }
+.btn.go { background: var(--blue); color: var(--blue-ink); justify-content: space-between; gap: 14px; padding: 10px 10px 10px 16px; --r: 18px 8px 16px 9px / 9px 16px 8px 18px; }
+.btn.go .arr { width: 30px; height: 30px; border-radius: 8px 12px 8px 12px; background: color-mix(in srgb, var(--blue-ink) 22%, transparent); display: grid; place-items: center; font-size: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sect h3 { margin: 0 0 6px; font: 400 10.5px var(--mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.chips li { border: 1.5px solid var(--ink); padding: 1px 11px; font-weight: 300; border-radius: 60% 40% 55% 45% / 55% 50% 50% 45%; }
+.chips li:nth-child(2n) { border-radius: 45% 55% 40% 60% / 50% 45% 55% 50%; }
+.chips li:nth-child(3n) { border-radius: 999px; }
+.sect p { margin: 0; font-weight: 300; }
+.note { background: var(--peach); padding: 9px 12px; font-weight: 400; font-size: 14px; border-radius: var(--blob2); }
+
+#pickBox { position: fixed; z-index: 7; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(var(--sheetH, 200px) + 12px); background: var(--lime); color: var(--lime-ink); padding: 12px 14px; display: grid; gap: 6px; --r: 18px 8px 16px 9px / 9px 16px 8px 18px; }
+#pickBox[hidden] { display: none; }
+#pickBox label { font: 400 11px var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+#pickBox input { width: 100%; font: inherit; padding: 8px 10px; border: 1.5px solid var(--ink); border-radius: var(--blob2); background: var(--paper); color: var(--ink); }
+#pickBox .x { position: absolute; top: 4px; right: 8px; font-size: 20px; line-height: 1; padding: 4px 6px; }
+
+/* phone sheet pieces (hidden on desktop) */
+#sheet { display: none; }
+
+@media (min-width: 761px) {
+  body { padding-left: 0; padding-right: 0; }
+  .left { width: 392px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: max(14px, env(safe-area-inset-left, 0px)); }
+  .hud { padding: 12px 26px 14px 22px; }
+  h1 { font-size: 46px; }
+  #listpanel { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  #listpanel .scroll { overflow: auto; flex: 1; min-height: 0; }
+  body > #card { position: fixed; z-index: 3; right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 372px; max-height: calc(100% - 28px - env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; }
+  body > #card .scroll { overflow: auto; }
+  .legend { display: flex; left: 430px; }
+  #pickBox { left: auto; right: max(14px, env(safe-area-inset-right, 0px)); bottom: auto; top: calc(14px + env(safe-area-inset-top, 0px)); width: 340px; margin-right: 56px; }
+  .mapctl { right: calc(max(14px, env(safe-area-inset-right, 0px)) + 372px + 12px); top: calc(14px + env(safe-area-inset-top, 0px)); }
+  .stat b { font-size: 22px; white-space: nowrap; }
+}
+
+@media (max-width: 760px) {
+  .left { right: 70px; }
+  .hud { padding: 8px 18px 9px 14px; --r: 34px 12px 30px 14px / 16px 30px 12px 34px; }
+  .hud .eyebrow { font-size: 10px; }
+  #sheet {
+    display: flex; flex-direction: column; position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; background: var(--paper);
+    border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); --r: 28px 28px 0 0 / 22px 22px 0 0;
+  }
+  #sheet::before { border-bottom: 0; }
+  #sheet[data-open="half"] { height: 50vh; height: 50dvh; }
+  #sheet[data-open="true"] { height: 88vh; height: 88dvh; }
+  #sheet[data-open="half"], #sheet[data-open="true"] { animation: rise .24s ease-out; }
+  @keyframes rise { from { transform: translateY(24%); } to { transform: none; } }
+  #sheet[data-open="half"] .p-sum { display: none; }
+  #sheet[data-open="half"] #peek { padding-bottom: 2px; }
+  .grip { touch-action: none; width: 100%; padding: 10px 16px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .grip .bar { width: 44px; height: 4px; border-radius: 4px; background: var(--ink); opacity: .6; }
+  .grip .gl { font: 400 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  #peek { padding: 2px 14px 12px; display: grid; gap: 10px; min-width: 0; }
+  #sheet[data-open="true"] #peek { display: none; }
+  .p-sum { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .p-sum > div { min-width: 0; }
+  .p-name { display: block; font-weight: 300; font-size: 24px; line-height: 1.05; letter-spacing: -.03em; }
+  .p-meta { display: block; font: 400 11px var(--mono); letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+  .p-sum .btn { flex: none; }
+  .car { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 4px 14px 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .car::-webkit-scrollbar { display: none; }
+  .car button { flex: none; scroll-snap-align: center; display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 7px; border: 1.8px solid var(--ink); border-radius: 999px 50% 999px 60% / 60% 999px 50% 999px; background: var(--paper); font-weight: 400; white-space: nowrap; }
+  .car .cn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink); display: grid; place-items: center; font: 500 11px var(--mono); }
+  .car small { font: 400 10.5px var(--mono); color: var(--muted); }
+  .car button[aria-pressed="true"] { background: var(--lime); color: var(--lime-ink); }
+  .car button[aria-pressed="true"] small { color: var(--lime-ink); opacity: .75; }
+  .car button[aria-pressed="true"] .cn { background: var(--blue); color: var(--blue-ink); }
+  #sheetBody { display: none; }
+  #sheet[data-open="half"] #sheetBody, #sheet[data-open="true"] #sheetBody { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; min-height: 0; padding: 4px 12px 18px; overscroll-behavior: contain; }
+  #sheetBody > .card, #sheetBody > #listpanel { --r: 18px 8px 16px 9px / 9px 16px 8px 18px; }
+  #sheetBody > .card::before, #sheetBody > #listpanel::before { display: none; }
+  #sheetBody .card { background: transparent; }
+  #sheetBody #listpanel { background: transparent; }
+  .mapctl { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+  .mapctl button { width: 42px; height: 42px; }
+  .stat b { font-size: 23px; }
+}
+@media (max-width: 380px) {
+  h1 { font-size: 26px; }
+  .stat b { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="roughS" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="rough" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+
+<div id="splash" role="dialog" aria-modal="true" aria-labelledby="splashTag">
+  <div class="note sketch wob">
+    <p class="tag-line" id="splashTag">Fine, I’ll Pick &middot; a note before you scroll</p>
+    <p class="hand">my date is so busy that i have to arrange everything myself which is annoying actually deeply annoying but hold on my vibecoding skills are so absurdly strong that i have decided to enjoy this entire process so here i am building a website at 8pm on a saturday for a man who has never once confirmed anything before the night but i would still like to hold an apple next to him</p>
+    <svg class="hold" viewBox="0 -12 140 176" aria-hidden="true" focusable="false" filter="url(#roughS)">
+      <rect class="skin" x="57" y="10" width="24" height="86" rx="12"/>
+      <path class="skin" d="M36 88 C 36 76, 46 68, 58 72 L 82 72 C 94 68, 106 74, 106 88 L 108 120 C 108 134, 100 146, 94 158 L 52 158 C 44 146, 36 134, 36 120 Z"/>
+      <rect class="skin" x="37" y="56" width="22" height="38" rx="11"/>
+      <rect class="skin" x="79" y="58" width="22" height="36" rx="11"/>
+      <rect class="skin" x="99" y="72" width="18" height="32" rx="9"/>
+      <rect class="skin" x="44" y="98" width="48" height="21" rx="10.5" transform="rotate(-8 68 108)"/>
+      <path d="M62 62 C 66 66, 72 66, 76 62" fill="none"/>
+      <path d="M43 12 L36 3 M97 12 L104 3 M69 4 L69 -8" fill="none"/>
+    </svg>
+    <button type="button" class="btn go sketch" id="splashGo">Okay, show me the apples <span class="arr" aria-hidden="true">&rarr;</span></button>
+  </div>
+</div>
+
+<div id="stage"><svg id="map" role="img" aria-label="Hand-drawn map of the Hudson Valley with the orchards marked"></svg></div>
+
+<div class="left" id="left">
+  <header class="hud sketch wob" id="hud">
+    <div class="eyebrow">Apple day &middot; leave 12:00, home by 5:00</div>
+    <h1>Fine, I’ll Pick.</h1>
+  </header>
+</div>
+
+<div class="mapctl">
+  <button type="button" class="sketch wob" id="zin" aria-label="Zoom in">+</button>
+  <button type="button" class="sketch wob" id="zout" aria-label="Zoom out">&minus;</button>
+  <button type="button" class="sketch wob all" id="zall" aria-label="Show all orchards">All</button>
+</div>
+
+<div class="legend sketch wob" aria-hidden="true">
+  <span><i></i>Orchard</span><span><i class="on"></i>Selected</span><span><i class="dash"></i>Straight line, not the road</span>
+</div>
+
+<section id="sheet" data-open="false" aria-label="Orchards">
+  <button type="button" class="grip" id="grip" aria-expanded="false" aria-controls="sheetBody">
+    <span class="bar"></span><span class="gl" id="gripLabel">All 14 orchards and details</span>
+  </button>
+  <div id="peek">
+    <div class="p-sum">
+      <div><b class="p-name" id="pName"></b><span class="p-meta" id="pMeta"></span></div>
+      <button type="button" class="btn go sketch" id="pPick">Pick <span class="arr" aria-hidden="true">&rarr;</span></button>
+    </div>
+    <div class="car" id="car" role="group" aria-label="Choose an orchard"></div>
+  </div>
+  <div id="sheetBody"></div>
+</section>
+
+<article id="card" class="card sketch wob" aria-live="polite"><div class="scroll" id="cardBody"></div></article>
+
+<section id="listpanel" class="sketch wob" aria-label="All orchards">
+  <div class="scroll">
+    <p class="lede">Fourteen orchards within about two and a half hours of Williamsburg. Tap one for the drive, the address and what there is to do besides picking. Then hit Pick this one and send it back to me.</p>
+    <div class="controls">
+      <div class="seg" role="radiogroup" aria-label="Sort orchards">
+        <button type="button" role="radio" data-sort="rec" aria-checked="true">Shortlist</button>
+        <button type="button" role="radio" data-sort="drive" aria-checked="false">Closest</button>
+        <button type="button" role="radio" data-sort="todo" aria-checked="false">Most to do</button>
+      </div>
+      <label class="toggle" for="townOnly"><input type="checkbox" id="townOnly"> Real town nearby</label>
+      <span class="count" id="count" aria-live="polite"></span>
+    </div>
+    <ul class="list" id="list"></ul>
+    <div class="notes">
+      <p>Drive times are estimates for a noon departure with ordinary weekend traffic, and pins sit within a mile or two of the real spot. The dotted line on the map is a straight line, not the road. "Directions in Google Maps" gives the live number. Hours and ticketing come from published listings, so check the farm's page or call before leaving.</p>
+      <p>Sources:</p>
+      <ul>
+        <li><a href="https://destinationdutchess.com/event-view/45506_2026_10_17" target="_blank" rel="noopener">Destination Dutchess, Fishkill Farms</a></li>
+        <li><a href="https://www.timeout.com/new-york-kids/things-to-do/best-apple-picking-farms-and-orchards-for-families-near-nyc" target="_blank" rel="noopener">Time Out, family orchards near NYC</a></li>
+        <li><a href="https://www.timeout.com/newyork/things-to-do/best-apple-picking-farms-and-orchards-near-NYC" target="_blank" rel="noopener">Time Out, apple picking near NYC</a></li>
+        <li><a href="https://www.pickyourown.org/apple-orchards/NYse-Orange-apples.php" target="_blank" rel="noopener">PickYourOwn, Orange County apples</a></li>
+        <li><a href="https://www.iloveny.com/listing/warwick-valley-apple-trail/131924/" target="_blank" rel="noopener">I LOVE NY, Warwick Valley Apple Trail</a></li>
+        <li><a href="https://www.rome2rio.com/s/East-Fishkill/Brooklyn" target="_blank" rel="noopener">Rome2Rio, East Fishkill to Brooklyn</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div id="pickBox" class="sketch wob" hidden>
+  <label for="pickText" id="pickLabel">Copy this and send it to zz</label>
+  <input id="pickText" type="text" readonly>
+  <button type="button" class="x" id="pickX" aria-label="Close">&times;</button>
+</div>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var BASE = "M360.0 -511.9L373.6 -508.2L386.8 -506.0L399.5 -501.8L411.9 -499.2L428.8 -491.0L444.9 -482.9L460.8 -474.2L477.8 -466.4L501.8 -469.4L526.6 -471.5L551.4 -473.4L576.4 -475.2L580.6 -479.4L586.8 -481.1L591.0 -486.1L592.5 -477.4L592.3 -469.2L594.1 -461.2L595.1 -453.0L588.6 -451.1L581.7 -448.8L574.8 -446.4L567.6 -445.4L571.8 -438.2L577.6 -432.0L582.6 -425.3L587.2 -417.9L599.9 -418.5L612.8 -416.7L625.7 -415.9L639.2 -417.1L640.3 -421.2L640.3 -426.0L641.2 -431.1L644.6 -427.7L648.5 -424.8L651.4 -421.1L648.0 -400.6L642.2 -380.7L638.9 -360.4L633.8 -340.5L626.2 -326.8L618.5 -313.0L611.9 -298.7L604.2 -284.9L606.8 -273.5L608.4 -261.9L610.6 -250.3L612.9 -238.7L606.4 -224.1L602.1 -208.7L597.0 -193.6L591.2 -178.3L594.7 -174.0L597.7 -168.3L599.6 -162.7L600.8 -156.4L602.2 -150.0L603.9 -143.5L588.7 -138.9L572.7 -135.8L557.1 -131.6L541.1 -126.2L536.3 -129.2L531.9 -133.6L527.0 -137.1L521.8 -140.8L512.5 -137.5L502.5 -134.5L493.3 -129.4L483.0 -125.6L457.5 -140.4L430.9 -154.1L404.9 -169.1L377.6 -182.9L363.5 -200.8L349.8 -220.1L335.2 -238.7L322.4 -258.6L334.3 -280.5L347.6 -302.0L359.8 -324.2L372.2 -347.4L365.4 -371.8L361.2 -397.5L355.4 -422.8L350.5 -447.9L353.4 -464.1L355.3 -480.2L357.2 -496.3L360.4 -511.7ZM482.9 -125.6L493.4 -129.2L502.9 -133.5L512.5 -137.5L521.6 -141.7L527.7 -138.1L532.0 -133.6L536.6 -129.7L541.2 -125.7L557.4 -130.5L572.9 -135.3L588.4 -140.0L604.6 -144.0L603.6 -150.4L602.0 -156.7L599.3 -162.7L598.1 -168.3L668.1 -181.0L738.9 -190.6L809.4 -202.3L880.3 -214.0L879.9 -207.2L883.1 -200.5L882.6 -193.3L884.7 -186.8L881.6 -175.2L879.2 -164.0L875.3 -153.1L873.6 -140.9L874.8 -124.1L877.4 -106.6L877.9 -88.9L879.4 -71.9L878.2 -63.9L875.0 -57.2L872.0 -50.3L869.8 -44.2L862.5 -38.0L855.1 -34.1L848.6 -28.6L841.4 -24.3L841.1 -16.7L838.5 -9.1L838.0 -1.1L836.7 7.2L831.6 11.8L825.5 15.8L821.0 21.7L815.5 26.8L813.0 34.5L809.3 42.3L807.7 50.8L803.7 59.1L790.1 49.2L775.9 39.5L762.3 28.8L748.5 18.1L742.6 20.3L736.7 21.6L730.7 22.6L724.0 23.4L719.3 38.8L715.5 54.1L709.7 68.7L704.9 83.3L670.3 81.1L635.4 76.7L600.4 72.9L566.1 69.7L543.6 58.6L522.3 47.1L501.0 35.5L479.4 24.8L465.9 19.2L453.8 11.0L440.4 5.7L427.1 -0.8L443.4 -31.1L460.0 -60.8L475.0 -91.4L492.2 -120.5L487.4 -122.4L483.5 -125.5ZM1051.8 1023.8L1057.4 1035.2L1063.0 1046.2L1068.6 1057.2L1073.5 1069.2L1077.8 1096.9L1082.7 1125.2L1086.7 1153.7L1091.2 1182.4L1092.6 1204.5L1092.0 1227.0L1095.1 1249.3L1094.8 1271.9L1075.2 1277.2L1055.4 1283.2L1035.6 1289.3L1015.2 1293.5L986.5 1291.9L957.3 1292.2L928.3 1288.4L899.6 1287.6L895.6 1281.7L892.7 1275.0L890.0 1268.2L889.0 1261.2L895.1 1255.3L900.7 1248.7L907.7 1243.5L914.1 1237.1L913.5 1223.8L914.4 1209.6L913.4 1195.5L914.2 1181.3L918.7 1176.3L921.1 1169.7L924.7 1164.0L928.7 1158.8L919.9 1148.8L909.3 1139.8L899.1 1130.5L889.2 1121.3L896.4 1107.7L904.4 1093.9L913.5 1080.6L921.4 1065.7L926.8 1068.7L932.1 1072.5L938.9 1073.1L945.2 1077.3L949.3 1069.0L954.4 1061.7L960.9 1055.4L966.8 1047.2L977.6 1044.2L988.3 1038.0L1000.2 1034.8L1011.9 1029.2L1021.3 1027.4L1031.7 1026.8L1041.8 1024.5L1051.6 1024.1ZM723.4 1208.6L727.4 1204.1L731.0 1198.4L735.0 1193.3L738.9 1182.8L739.0 1171.4L742.2 1160.6L744.2 1149.6L748.6 1143.0L752.0 1136.0L756.0 1129.4L759.9 1122.5L766.8 1105.9L774.8 1089.7L782.5 1073.5L789.3 1056.5L795.5 1058.1L800.6 1062.0L806.9 1063.8L801.9 1070.9L797.7 1078.5L793.6 1086.1L790.1 1093.8L793.4 1101.1L796.3 1109.1L798.3 1117.4L803.0 1124.5L795.0 1136.9L786.3 1147.9L779.9 1160.3L772.0 1172.5L771.1 1177.5L769.2 1182.9L767.6 1188.3L765.8 1193.9L758.5 1199.1L751.4 1204.5L745.0 1210.9L738.0 1216.3L732.5 1214.0L727.7 1210.9L722.3 1207.8ZM34.9 1287.4L42.5 1279.9L48.3 1271.9L55.4 1265.2L61.8 1257.7L67.1 1254.6L73.0 1252.2L79.1 1250.6L84.7 1249.1L98.8 1238.0L111.8 1226.7L126.1 1216.8L138.6 1204.8L146.5 1201.9L153.9 1198.3L161.2 1194.6L168.5 1192.8L181.1 1177.1L192.9 1161.8L204.1 1145.9L217.2 1131.5L225.5 1140.9L235.9 1149.1L245.8 1158.0L255.7 1167.7L270.7 1170.6L285.5 1176.3L300.6 1180.7L316.1 1185.5L314.1 1202.6L314.0 1219.8L314.7 1237.0L312.7 1254.8L318.4 1257.3L323.7 1259.7L328.9 1263.7L327.9 1270.7L324.3 1277.7L324.5 1285.6L321.7 1292.9L312.5 1308.4L304.0 1324.5L295.5 1340.7L286.0 1355.8L280.5 1352.7L274.8 1350.5L270.4 1346.6L277.1 1364.9L286.3 1382.3L293.5 1400.6L300.3 1419.4L291.3 1420.0L282.2 1421.7L273.1 1423.6L263.7 1424.0L264.7 1430.7L266.7 1436.8L266.5 1443.2L268.1 1448.9L258.0 1451.0L247.6 1451.5L237.6 1454.2L227.5 1455.2L228.5 1461.9L231.1 1467.8L234.9 1473.4L235.6 1479.3L222.9 1479.9L210.1 1482.0L197.1 1482.0L184.5 1483.7L180.9 1472.3L176.0 1461.1L173.2 1449.3L169.7 1438.6L155.8 1434.1L142.0 1432.5L128.5 1429.3L115.5 1425.5L113.8 1417.2L111.7 1409.6L108.1 1402.4L107.3 1394.2L107.2 1378.4L107.9 1362.3L108.9 1346.2L111.0 1329.7L106.2 1323.4L100.2 1317.7L94.4 1311.7L89.2 1304.8L80.3 1305.7L71.3 1307.9L62.0 1307.5L53.2 1307.7L49.3 1302.5L45.2 1296.9L39.3 1292.7L35.5 1286.6ZM529.4 490.1L544.5 482.6L560.4 474.9L575.2 465.1L591.1 457.5L592.6 463.4L595.2 468.7L598.3 473.9L600.3 480.2L618.2 484.1L636.3 489.2L654.9 492.7L672.9 498.0L671.3 491.1L670.1 484.6L668.9 478.1L669.3 471.0L681.7 477.4L693.1 485.9L706.4 491.2L717.8 498.6L733.5 498.0L748.5 496.0L763.6 494.5L778.2 491.7L771.3 506.0L764.1 520.0L757.8 534.5L750.0 548.6L751.6 561.4L749.5 574.3L750.4 587.2L750.6 599.7L754.7 603.8L757.6 608.5L762.0 612.2L766.8 621.1L770.3 630.8L776.3 639.1L781.0 647.8L775.4 662.0L772.1 676.4L765.4 689.7L762.0 704.2L722.6 739.6L685.3 776.9L647.0 813.1L608.7 849.4L588.9 836.4L568.7 824.7L548.8 812.7L528.3 801.1L479.3 770.6L431.0 738.9L381.9 708.3L333.4 677.6L324.2 664.0L313.9 651.4L305.4 637.6L296.9 624.5L295.6 610.4L298.0 596.7L298.3 582.9L298.0 568.4L339.8 566.4L381.3 564.8L422.7 562.0L464.0 560.8L474.5 546.7L483.8 531.7L493.9 517.4L505.3 503.5L510.8 500.1L516.6 496.6L522.9 494.1L528.5 491.3ZM-141.1 1422.7L-130.3 1408.8L-117.5 1396.3L-107.1 1381.8L-96.5 1367.9L-84.7 1358.2L-73.7 1348.1L-61.1 1339.9L-50.0 1329.8L-29.4 1316.4L-9.3 1301.8L11.3 1288.0L30.6 1272.9L32.2 1277.9L34.3 1282.2L35.7 1286.2L40.6 1291.7L44.0 1297.8L48.3 1303.3L52.1 1307.9L61.9 1307.0L71.1 1306.1L80.4 1306.6L90.0 1304.8L94.7 1311.5L100.0 1317.9L106.3 1323.3L110.2 1330.1L109.9 1346.3L108.8 1362.4L107.8 1378.5L106.4 1394.7L107.9 1402.4L112.2 1409.5L113.9 1417.2L114.8 1424.8L128.9 1427.8L142.0 1432.4L155.8 1434.0L168.6 1438.1L173.7 1449.1L176.1 1461.1L179.4 1472.7L183.6 1484.1L196.0 1492.4L206.6 1502.5L218.7 1510.6L228.7 1521.1L232.5 1529.5L237.5 1537.7L241.1 1546.6L244.6 1555.9L254.7 1563.4L266.5 1568.8L277.0 1576.0L287.9 1583.1L295.5 1595.4L301.2 1608.8L307.8 1621.6L316.1 1634.2L307.5 1640.5L298.0 1645.1L290.2 1652.1L281.5 1657.5L275.7 1656.1L270.4 1654.5L264.8 1654.3L260.1 1651.7L253.0 1660.5L246.9 1669.4L239.9 1677.5L233.7 1685.8L216.1 1692.1L199.4 1700.2L181.9 1706.1L164.6 1713.7L166.7 1699.7L167.1 1685.9L170.6 1672.5L172.0 1659.3L163.4 1655.8L156.2 1651.4L149.0 1647.0L141.3 1643.8L127.8 1632.5L113.3 1622.4L99.4 1611.8L84.6 1601.5L28.1 1557.5L-27.8 1512.0L-85.2 1468.5L-140.8 1423.2ZM1138.2 -250.9L1152.6 -299.3L1166.0 -347.5L1178.3 -396.0L1192.4 -444.1L1228.2 -443.4L1264.2 -442.0L1300.3 -440.3L1335.7 -440.1L1336.4 -432.1L1335.5 -424.4L1335.3 -416.7L1335.9 -408.6L1347.7 -409.3L1359.0 -409.3L1370.3 -410.8L1381.2 -410.2L1374.4 -404.2L1368.1 -397.2L1361.1 -390.9L1353.7 -384.5L1359.4 -382.8L1365.1 -380.5L1371.7 -380.9L1377.6 -377.5L1377.9 -371.6L1378.9 -365.0L1379.1 -358.5L1376.8 -340.9L1372.1 -323.8L1368.4 -306.4L1364.5 -288.9L1366.8 -282.6L1367.9 -276.0L1362.2 -243.4L1355.4 -211.0L1348.9 -178.5L1342.3 -146.6L1335.0 -149.0L1326.9 -150.7L1318.7 -151.9L1310.4 -154.2L1310.8 -141.4L1312.5 -129.2L1311.6 -117.0L1312.7 -105.2L1322.1 -102.0L1331.4 -99.2L1340.0 -94.4L1349.1 -91.9L1349.0 -78.8L1347.6 -66.1L1347.6 -53.4L1347.3 -41.3L1342.8 -19.1L1339.3 2.6L1334.1 24.0L1330.5 45.6L1324.4 45.4L1319.2 43.3L1313.8 43.0L1308.9 42.4L1307.5 53.1L1307.8 64.0L1305.9 74.9L1306.1 85.1L1308.8 96.9L1310.8 108.0L1314.7 118.6L1316.9 130.2L1260.4 128.5L1204.0 124.4L1147.4 122.2L1090.5 121.0L1082.8 121.2L1074.7 120.0L1066.7 121.3L1058.0 120.6L1051.7 121.4L1050.0 114.1L1047.9 107.0L1047.2 99.5L1045.8 92.2L1069.6 6.5L1092.8 -79.4L1115.9 -165.3L1137.7 -252.2ZM-216.2 1131.5L-196.0 1126.1L-175.5 1120.5L-154.7 1116.4L-133.8 1109.3L-119.9 1106.7L-105.3 1103.3L-91.1 1098.3L-75.7 1096.1L-62.5 1088.8L-48.2 1082.8L-33.9 1076.7L-20.0 1069.2L-10.9 1056.7L-1.2 1044.3L8.8 1032.3L18.2 1020.5L33.4 1011.9L48.9 1004.6L63.2 995.1L78.7 987.7L81.2 997.1L86.1 1005.3L88.6 1014.4L92.2 1022.9L98.7 1034.0L105.8 1044.4L112.8 1055.0L119.7 1066.3L106.4 1084.4L95.0 1104.3L82.3 1123.3L69.9 1143.0L64.1 1142.1L58.3 1140.9L52.2 1140.8L47.1 1139.9L42.4 1156.5L36.9 1173.3L31.8 1190.2L27.5 1206.9L30.6 1211.9L36.2 1214.1L40.1 1218.2L44.2 1222.1L41.0 1227.7L36.7 1232.4L32.5 1237.2L29.4 1242.6L29.2 1250.3L30.1 1257.9L31.0 1265.5L31.9 1272.4L11.3 1287.9L-10.0 1300.7L-29.6 1316.1L-49.7 1329.7L-60.0 1320.0L-70.7 1311.8L-80.6 1302.9L-91.9 1295.6L-88.4 1287.7L-83.2 1281.7L-79.3 1275.0L-77.2 1267.2L-84.0 1255.9L-92.8 1244.9L-99.6 1232.4L-108.7 1220.8L-115.9 1225.7L-123.3 1229.6L-131.8 1231.2L-138.2 1235.1L-146.6 1219.9L-154.5 1204.2L-162.0 1188.2L-169.4 1172.7L-174.6 1175.3L-179.4 1179.5L-183.3 1184.4L-189.5 1181.5L-194.6 1178.2L-200.2 1176.1L-205.8 1172.9L-208.1 1162.9L-210.4 1152.4L-214.8 1142.4L-217.1 1131.9ZM1350.0 -91.4L1356.7 -97.4L1363.0 -104.4L1370.2 -110.4L1376.8 -116.4L1387.7 -115.1L1397.9 -112.7L1408.1 -110.3L1418.8 -107.1L1418.6 -93.9L1420.8 -80.4L1422.5 -66.9L1423.3 -52.7L1417.8 -47.7L1413.6 -41.7L1407.8 -37.2L1403.3 -31.5L1409.5 -27.6L1415.5 -23.2L1421.2 -18.4L1427.4 -13.9L1428.7 -18.5L1430.1 -23.7L1434.0 -27.8L1434.9 -33.6L1445.2 -32.9L1454.8 -31.4L1464.4 -29.4L1474.7 -29.3L1474.8 -21.8L1476.6 -14.4L1479.5 -7.2L1480.1 0.8L1495.5 2.6L1509.9 6.4L1524.4 9.7L1539.6 14.0L1537.9 7.6L1538.1 1.4L1537.3 -4.7L1536.4 -11.3L1542.0 -12.9L1546.1 -17.1L1551.7 -18.8L1555.4 -22.4L1560.4 -31.6L1563.3 -41.1L1566.0 -50.7L1568.8 -60.0L1574.1 -57.9L1579.9 -58.5L1585.3 -57.3L1590.2 -55.1L1587.3 -48.0L1582.5 -41.7L1578.8 -34.6L1575.1 -27.3L1580.5 -23.2L1585.6 -18.9L1589.8 -13.7L1594.6 -8.9L1622.8 -13.3L1650.7 -18.7L1678.7 -22.6L1707.3 -25.8L1708.1 -16.6L1709.6 -7.2L1712.6 2.0L1713.5 11.2L1717.1 6.7L1722.2 3.2L1727.0 -0.7L1730.7 -6.3L1752.0 -13.7L1774.0 -20.1L1795.4 -28.1L1816.1 -37.3L1811.0 -23.7L1804.4 -11.4L1797.6 0.7L1791.5 12.7L1800.7 17.1L1810.1 22.1L1820.4 25.4L1829.4 30.4L1839.2 30.5L1848.9 31.9L1858.6 30.2L1868.7 30.6L1867.5 57.6L1868.8 84.1L1867.4 110.7L1868.0 137.6L1812.3 136.7L1756.3 136.2L1700.4 133.8L1644.3 133.8L1629.8 133.4L1615.2 134.1L1600.8 136.7L1586.1 136.5L1563.6 134.7L1541.0 134.6L1518.3 134.2L1495.7 131.6L1494.4 139.2L1492.8 146.0L1490.4 152.6L1488.8 159.9L1481.8 160.8L1474.2 161.2L1466.6 161.9L1458.8 163.0L1458.6 155.8L1461.2 148.1L1460.2 140.2L1461.8 132.0L1432.2 131.0L1403.2 130.9L1374.1 130.5L1344.4 130.4L1338.0 130.7L1331.0 129.9L1324.0 129.5L1317.2 129.7L1314.0 118.8L1311.4 107.8L1309.9 96.6L1307.0 85.4L1306.1 74.9L1307.6 64.0L1308.2 53.1L1308.0 41.3L1313.9 42.4L1319.3 42.9L1324.5 44.8L1330.6 46.1L1335.2 24.2L1338.8 2.5L1342.5 -19.2L1347.8 -40.3L1348.4 -53.4L1348.1 -66.1L1349.6 -78.8L1348.7 -91.8ZM1094.4 1271.7L1095.1 1249.3L1093.5 1226.9L1091.2 1204.6L1090.9 1181.6L1087.7 1153.5L1081.7 1125.4L1077.7 1096.9L1073.4 1069.0L1068.6 1057.2L1062.6 1046.4L1058.6 1034.7L1052.5 1024.3L1055.0 1018.2L1055.6 1011.5L1059.2 1005.0L1070.7 1010.1L1082.6 1015.2L1094.0 1021.3L1106.0 1025.9L1106.8 1019.1L1109.2 1012.3L1108.7 1005.1L1109.6 998.0L1114.4 1003.6L1120.7 1006.9L1124.6 1012.7L1130.2 1016.6L1140.3 1019.5L1151.1 1020.7L1161.9 1021.5L1173.5 1022.8L1182.0 1027.7L1192.1 1030.6L1202.2 1033.6L1211.9 1038.5L1223.8 1033.6L1236.1 1028.4L1248.8 1024.6L1261.7 1018.6L1262.5 1012.0L1262.2 1004.5L1264.4 997.3L1266.0 990.7L1274.5 989.0L1283.5 986.4L1292.7 985.6L1302.2 984.9L1307.1 987.0L1312.4 989.3L1317.9 991.2L1323.3 993.3L1363.9 993.1L1404.2 991.0L1444.6 991.1L1484.3 990.2L1505.9 986.5L1527.1 984.4L1548.1 981.0L1568.8 977.2L1576.2 973.1L1584.3 971.4L1591.8 968.4L1599.7 964.3L1614.7 953.1L1631.1 942.7L1647.7 932.6L1663.0 921.9L1669.3 915.3L1673.7 908.2L1677.9 900.9L1683.3 893.5L1689.8 892.7L1695.9 889.5L1702.3 887.2L1709.5 884.9L1716.9 877.6L1722.8 868.2L1729.8 859.6L1736.6 851.6L1748.3 847.9L1759.2 843.0L1771.0 840.9L1781.7 836.5L1788.7 836.3L1795.1 838.0L1801.6 836.7L1807.4 839.0L1797.5 846.2L1789.0 856.4L1779.3 865.3L1769.9 873.1L1763.0 876.2L1756.5 877.3L1749.9 878.5L1758.2 882.9L1766.2 888.2L1774.5 893.1L1781.7 899.2L1783.9 907.0L1788.4 913.8L1791.1 921.4L1792.2 928.8L1802.3 930.2L1811.2 933.7L1820.6 934.4L1829.7 938.0L1835.2 932.7L1842.1 929.8L1846.7 923.7L1853.5 919.7L1862.3 932.3L1871.0 944.5L1879.5 956.9L1887.1 970.2L1895.4 965.5L1903.6 963.0L1912.2 961.5L1920.6 958.0L1932.1 949.2L1945.0 941.9L1957.7 934.1L1969.9 925.0L1970.8 918.7L1972.2 912.3L1974.3 906.0L1983.0 904.1L1992.0 901.5L2001.3 900.5L2009.9 899.0L2017.2 899.5L2023.0 903.6L2030.1 903.9L2035.9 906.2L2032.8 911.5L2029.9 916.8L2025.3 921.7L1989.9 938.1L1953.2 952.8L1917.5 969.5L1881.9 985.3L1839.6 1006.9L1797.3 1027.2L1754.8 1047.2L1713.6 1068.8L1686.4 1079.8L1659.5 1090.5L1632.9 1101.8L1605.9 1110.8L1562.0 1127.1L1518.0 1141.9L1475.1 1159.8L1430.9 1174.8L1403.1 1188.9L1373.6 1200.2L1345.4 1214.2L1317.6 1227.1L1293.5 1233.5L1271.0 1242.7L1247.8 1249.4L1224.8 1255.3L1209.9 1257.6L1195.3 1259.2L1180.8 1261.4L1165.9 1264.0L1162.7 1259.3L1158.3 1256.1L1152.9 1253.1L1139.0 1258.6L1124.0 1261.9L1109.8 1267.3L1095.7 1272.6ZM79.5 988.3L76.4 982.2L74.0 976.5L70.9 970.7L86.5 961.9L102.1 950.9L117.9 940.3L135.3 931.3L143.8 920.7L151.1 908.7L161.4 899.1L169.9 887.9L198.3 924.4L228.3 960.6L257.8 997.3L287.2 1034.2L281.9 1039.2L277.0 1045.4L271.7 1051.3L265.6 1056.6L264.1 1065.6L262.3 1074.4L260.7 1083.3L259.3 1091.5L248.2 1101.2L237.6 1111.2L227.3 1121.4L215.8 1131.3L205.5 1147.0L193.3 1162.0L181.6 1177.5L168.5 1192.7L162.0 1196.4L153.7 1198.0L147.0 1203.0L138.4 1205.8L125.3 1215.8L111.5 1226.3L98.1 1237.2L85.8 1248.6L78.9 1250.0L73.7 1254.1L67.3 1255.2L61.7 1257.4L54.4 1264.3L48.8 1272.4L41.8 1279.2L36.2 1286.4L33.9 1282.3L32.9 1277.7L32.1 1273.6L30.8 1265.5L30.6 1257.9L29.4 1250.3L28.8 1242.2L33.1 1237.6L36.1 1232.0L40.1 1227.0L45.0 1222.6L40.1 1218.3L35.2 1215.2L32.0 1210.2L26.7 1206.9L32.7 1190.5L36.2 1173.1L42.2 1156.5L46.7 1139.1L52.2 1141.0L58.1 1142.1L64.2 1141.2L69.8 1142.9L83.0 1123.7L94.5 1104.0L107.1 1084.8L119.3 1065.1L112.3 1055.3L106.6 1043.9L99.5 1033.4L92.1 1022.7L88.1 1014.7L85.4 1005.6L81.7 996.9L78.8 988.5ZM315.5 1185.7L341.1 1178.6L365.9 1169.1L391.8 1163.4L417.4 1155.7L423.6 1166.6L430.0 1178.6L436.0 1190.7L442.8 1202.3L440.8 1212.2L439.5 1221.9L438.2 1231.6L435.8 1241.6L445.1 1235.8L454.7 1231.8L463.6 1226.3L472.5 1220.8L474.2 1227.1L478.0 1231.6L479.8 1237.2L486.5 1235.3L493.5 1232.8L500.5 1230.3L506.8 1226.4L504.8 1236.6L501.0 1245.7L497.7 1255.1L494.4 1264.7L488.4 1267.7L483.7 1272.6L478.8 1277.4L473.1 1281.3L465.0 1283.5L457.9 1287.7L449.9 1290.2L442.9 1294.8L439.6 1300.0L436.0 1305.6L433.5 1312.4L445.2 1323.7L454.5 1337.0L465.2 1349.2L474.9 1361.6L464.6 1373.3L453.1 1383.4L443.2 1395.1L431.3 1405.5L424.4 1411.0L415.6 1414.3L407.5 1418.8L399.5 1422.9L393.4 1431.8L389.2 1441.2L383.4 1449.5L378.7 1458.7L372.7 1455.6L368.0 1452.0L363.7 1447.8L359.1 1445.3L348.6 1448.4L338.1 1450.7L327.8 1453.6L318.0 1456.8L312.7 1448.2L309.9 1437.9L305.5 1428.3L301.2 1419.3L293.4 1400.7L285.5 1382.7L278.5 1364.3L270.9 1346.6L274.9 1350.4L280.8 1352.2L284.7 1355.4L295.0 1340.4L303.5 1324.3L313.4 1308.9L322.0 1292.8L323.1 1285.3L324.6 1277.8L326.4 1270.4L328.7 1262.2L323.9 1259.3L318.5 1257.1L313.6 1254.6L314.6 1237.0L315.3 1219.9L316.1 1202.7L315.7 1185.1ZM-304.1 1173.3L-295.5 1165.0L-285.2 1159.0L-275.9 1151.7L-266.4 1144.9L-253.5 1141.8L-240.9 1139.1L-228.8 1135.0L-216.7 1131.5L-214.3 1142.3L-211.6 1152.7L-208.3 1162.9L-205.9 1173.8L-199.8 1175.3L-195.3 1179.8L-189.2 1181.0L-183.4 1184.2L-178.7 1180.5L-173.3 1176.9L-168.4 1171.3L-160.8 1187.6L-153.5 1203.7L-146.4 1219.9L-138.2 1235.5L-131.3 1232.3L-123.6 1229.0L-116.2 1225.1L-108.7 1221.0L-101.3 1233.6L-92.9 1244.9L-83.8 1255.7L-76.7 1268.5L-80.9 1274.1L-84.6 1280.9L-87.3 1288.3L-92.0 1295.0L-81.8 1304.2L-71.5 1312.8L-61.5 1321.7L-51.1 1330.3L-61.8 1339.2L-73.5 1348.4L-84.3 1358.6L-95.1 1368.7L-107.1 1381.8L-117.9 1395.9L-129.5 1409.4L-141.2 1423.8L-147.7 1417.7L-153.9 1411.8L-160.4 1406.4L-166.4 1401.0L-184.1 1386.9L-201.2 1372.8L-218.0 1358.3L-236.4 1345.0L-273.0 1313.7L-309.9 1281.9L-347.1 1250.4L-383.5 1219.4L-364.4 1207.3L-345.0 1194.8L-324.3 1184.7L-304.1 1172.3ZM108.1 481.9L121.6 500.7L133.3 519.8L145.8 538.3L158.0 556.0L159.3 562.6L160.4 568.4L161.0 574.2L161.2 580.5L166.6 580.1L172.5 579.0L178.5 578.7L184.7 576.4L192.9 581.5L200.8 587.5L208.4 593.8L215.8 599.1L215.4 606.0L212.0 612.2L225.7 611.3L239.1 610.6L252.6 610.9L266.7 609.8L274.0 612.5L280.8 617.8L288.9 620.1L295.5 624.7L304.4 638.2L315.4 650.4L324.6 663.7L333.0 677.9L324.1 679.5L315.7 682.6L306.8 683.8L299.0 686.6L285.7 697.8L275.5 711.2L262.3 721.7L251.3 734.0L242.4 754.9L236.9 776.9L228.6 797.9L221.5 819.4L214.3 827.0L208.5 835.4L203.4 844.4L197.3 853.1L186.0 861.3L176.3 871.9L165.1 880.6L154.8 888.8L148.9 892.5L143.2 894.0L138.1 897.0L132.3 899.7L125.5 887.0L118.5 874.9L111.9 862.5L103.9 850.0L92.8 848.0L81.0 845.7L69.0 845.0L57.6 842.5L59.8 822.6L65.7 802.8L68.5 782.4L72.9 762.6L37.7 764.2L3.3 767.2L-31.1 769.9L-65.4 772.3L-62.7 767.7L-57.8 764.8L-54.1 760.7L-50.9 744.6L-45.5 729.5L-42.4 713.7L-38.0 698.3L-42.7 690.5L-48.8 683.5L-55.8 677.1L-61.4 669.9L-48.3 668.9L-35.4 668.0L-22.5 666.8L-9.2 665.8L-8.5 657.8L-6.2 649.7L-3.0 641.9L-0.5 634.4L9.3 628.8L17.8 620.8L28.6 616.7L37.0 609.0L39.8 603.0L43.7 596.9L46.2 590.3L49.1 584.2L63.4 558.2L77.7 532.4L94.4 508.1L108.3 482.3ZM1360.1 452.7L1366.7 452.0L1373.2 451.0L1379.5 449.3L1386.1 447.8L1388.1 455.2L1388.3 462.7L1388.0 470.3L1389.5 476.8L1387.3 487.6L1386.1 497.9L1382.6 507.8L1382.4 518.0L1392.0 518.1L1402.1 515.7L1412.4 515.3L1422.1 513.9L1427.8 517.2L1432.7 521.5L1438.9 523.9L1444.3 528.6L1451.2 522.9L1457.7 517.3L1463.9 511.3L1469.3 505.7L1476.9 503.8L1483.8 502.0L1490.8 500.7L1498.5 501.1L1499.6 519.2L1504.2 537.7L1507.2 556.4L1508.5 575.3L1508.1 588.0L1504.8 600.4L1503.9 613.0L1502.9 625.4L1516.2 622.5L1530.0 618.5L1544.1 615.8L1557.9 612.4L1564.6 623.4L1570.1 634.1L1575.3 645.0L1581.7 654.9L1581.4 666.3L1582.5 677.4L1580.9 688.6L1581.7 700.4L1592.9 708.9L1602.5 719.5L1612.9 729.2L1623.0 738.9L1623.3 746.4L1626.2 752.7L1627.0 759.7L1622.3 756.9L1617.3 754.6L1612.6 751.6L1607.9 749.1L1593.7 749.6L1579.8 748.2L1565.7 748.8L1551.5 748.2L1548.8 753.6L1544.2 757.3L1540.5 761.8L1536.2 766.8L1527.3 761.5L1517.4 758.2L1507.8 753.9L1497.6 751.3L1476.2 754.3L1454.7 758.9L1433.1 763.5L1411.4 768.4L1409.4 758.9L1407.9 748.6L1407.4 738.1L1404.7 727.7L1400.0 730.0L1395.1 732.9L1390.6 736.4L1386.6 740.3L1375.9 753.8L1366.2 768.2L1355.8 782.1L1344.5 796.1L1338.5 796.6L1332.1 795.2L1325.6 794.6L1319.8 795.3L1311.1 804.6L1302.4 812.7L1293.9 821.0L1284.7 828.3L1279.9 825.0L1276.5 819.8L1277.9 810.2L1280.5 800.2L1283.1 790.2L1285.5 779.3L1289.6 765.4L1295.5 751.1L1302.6 737.3L1308.9 723.1L1300.6 717.8L1295.1 709.9L1286.8 705.2L1280.4 698.9L1268.8 683.7L1258.0 668.4L1247.3 653.1L1237.5 636.9L1218.5 626.1L1201.3 612.3L1181.8 602.1L1163.8 589.8L1162.9 582.0L1159.8 575.3L1158.4 568.2L1157.9 560.9L1182.4 558.2L1207.2 556.4L1231.9 552.9L1256.3 551.1L1254.6 543.1L1254.0 534.6L1251.9 526.5L1251.0 518.1L1260.9 515.3L1271.7 512.8L1282.3 509.3L1292.7 508.1L1299.5 501.1L1304.7 493.5L1309.6 485.8L1315.2 479.0L1325.7 470.8L1337.0 464.3L1348.4 458.0L1360.6 451.4ZM622.9 856.5L669.5 883.5L715.5 910.0L761.1 937.2L806.0 964.2L812.7 965.5L809.5 981.0L807.6 997.0L804.4 1012.7L800.5 1028.2L798.1 1035.6L795.5 1042.8L792.9 1050.0L788.9 1057.1L782.6 1073.5L773.5 1089.1L766.3 1105.7L759.8 1122.1L754.9 1116.9L749.1 1113.1L745.4 1107.2L739.6 1102.7L727.2 1112.2L714.6 1121.2L703.0 1131.7L691.0 1140.4L683.0 1139.5L676.3 1136.5L669.3 1134.5L662.1 1131.7L665.4 1126.1L667.2 1119.4L669.1 1112.6L671.3 1106.1L673.4 1098.4L673.4 1090.4L676.3 1083.0L676.9 1074.4L673.2 1053.9L669.8 1032.4L667.3 1010.8L663.7 988.8L648.5 983.7L632.1 979.5L616.3 973.5L600.3 969.7L597.3 963.3L593.2 958.0L590.3 952.0L586.8 946.7L596.0 923.8L605.3 901.5L613.5 878.7L624.3 857.1ZM760.8 707.2L826.9 696.6L892.6 687.9L958.6 680.8L1023.7 671.3L1023.4 685.0L1021.9 699.0L1020.0 713.1L1020.4 726.5L1030.7 743.4L1039.7 760.8L1050.9 776.9L1060.5 794.3L1023.7 815.2L987.5 838.2L950.6 859.9L914.8 882.1L925.1 900.1L935.3 917.8L946.0 935.3L957.5 952.9L956.9 958.1L956.4 963.7L956.8 969.4L954.9 975.2L950.8 981.8L947.4 989.1L944.8 996.9L939.7 1002.9L928.6 1010.5L917.1 1017.3L905.8 1024.4L895.5 1033.0L893.5 1039.4L892.6 1046.6L891.5 1053.7L890.2 1060.7L868.2 1052.2L845.7 1043.6L823.0 1035.8L800.4 1028.4L803.9 1012.6L807.6 997.0L809.1 980.9L813.1 965.9L814.2 939.1L814.1 912.7L815.9 886.4L817.9 860.1L810.2 845.4L804.4 830.0L798.8 814.6L791.1 800.2L786.0 791.0L778.9 783.3L773.7 774.2L768.1 765.2L770.9 756.7L774.6 748.1L778.5 739.6L782.4 731.0L778.3 724.5L771.6 719.4L766.9 712.6L760.7 706.9ZM-240.1 865.7L-231.9 858.3L-224.9 849.9L-217.2 842.2L-210.6 833.4L-202.0 821.3L-192.3 809.7L-183.9 797.2L-175.2 784.2L-169.9 783.6L-164.6 781.5L-159.2 779.7L-153.8 778.1L-131.8 777.5L-109.7 775.3L-87.6 774.4L-64.9 771.9L-31.1 770.9L3.3 767.2L37.8 764.8L72.1 762.2L69.1 782.5L64.8 802.6L62.1 823.0L57.8 842.6L69.1 844.1L81.0 845.9L92.6 849.0L104.3 850.8L112.0 862.4L118.8 874.7L124.6 887.5L133.3 899.6L137.5 895.8L142.9 893.5L148.5 891.4L153.6 889.8L159.1 889.1L164.1 887.6L168.5 886.9L159.8 897.9L152.2 909.5L143.0 920.0L134.7 930.7L118.0 940.5L102.9 952.3L85.6 960.5L69.3 970.9L72.5 977.3L76.6 982.1L78.1 988.0L63.2 995.1L48.4 1003.7L33.7 1012.5L17.7 1020.3L8.4 1032.0L-0.9 1044.6L-11.0 1056.6L-19.9 1069.2L-33.9 1076.8L-48.4 1082.3L-62.7 1088.3L-76.5 1095.0L-90.7 1100.2L-105.3 1103.5L-119.9 1106.7L-134.6 1110.6L-148.6 1082.3L-165.7 1056.3L-178.8 1028.2L-195.2 1002.4L-183.2 994.0L-170.6 988.1L-158.7 981.0L-146.9 973.2L-160.2 957.3L-172.7 941.5L-184.8 925.5L-196.5 909.1L-207.6 898.3L-219.0 888.0L-229.5 876.8L-239.3 866.3ZM377.6 1457.7L383.3 1449.5L389.8 1441.5L393.7 1432.0L399.9 1423.5L407.8 1419.3L415.3 1413.7L424.3 1410.8L431.3 1405.1L442.0 1393.9L453.7 1384.0L463.9 1372.6L475.6 1361.9L464.3 1349.9L455.3 1336.3L445.0 1323.8L434.4 1311.5L437.3 1306.2L439.0 1299.7L442.5 1294.1L450.4 1291.2L458.1 1288.2L465.7 1285.0L472.7 1281.0L496.5 1278.4L520.1 1275.8L544.0 1276.1L567.7 1272.6L570.3 1277.5L574.1 1281.2L575.5 1286.4L587.7 1284.8L599.0 1282.3L610.0 1278.3L621.4 1276.5L624.8 1280.8L628.2 1285.8L624.8 1291.9L623.6 1299.0L621.6 1305.8L618.8 1313.0L614.7 1315.8L609.6 1318.0L604.3 1319.9L600.5 1323.8L598.6 1331.9L596.8 1340.4L594.8 1348.8L593.6 1357.7L593.9 1364.6L592.3 1371.9L593.0 1379.2L593.5 1387.2L599.2 1387.8L604.1 1391.3L609.2 1394.4L615.1 1395.9L612.2 1405.1L608.6 1413.9L604.2 1422.4L601.5 1431.9L585.7 1447.9L569.3 1463.9L552.9 1479.8L536.7 1496.0L530.7 1505.2L525.3 1514.5L520.2 1524.0L513.1 1533.3L500.3 1537.8L486.5 1541.9L473.6 1548.4L460.1 1553.2L461.1 1547.7L459.6 1542.5L460.7 1537.7L438.4 1528.2L417.7 1517.4L396.5 1507.7L376.1 1497.3L375.3 1487.0L376.8 1477.5L376.4 1467.8L378.1 1457.5ZM-127.7 450.2L-131.8 378.1L-134.5 306.1L-137.7 234.2L-141.0 162.9L-128.6 161.7L-116.2 161.9L-103.8 161.2L-91.8 162.7L-85.0 163.0L-78.5 162.0L-72.0 163.1L-65.7 162.4L-58.1 172.5L-51.4 183.4L-42.0 192.2L-35.1 203.8L-29.9 202.3L-24.0 200.9L-19.5 217.5L-16.1 235.0L-12.1 252.4L-7.4 270.3L0.7 270.1L8.8 269.2L16.9 268.5L25.3 267.2L34.3 270.1L43.2 274.5L52.7 277.5L61.6 282.1L72.1 292.8L83.1 303.1L93.1 314.4L104.8 325.0L99.4 329.2L95.0 334.7L90.9 340.3L87.0 346.2L94.5 350.9L102.6 353.2L110.2 356.6L116.7 361.6L119.4 386.8L120.3 412.7L123.0 438.5L123.5 465.1L120.6 469.3L116.1 473.2L112.2 477.5L109.0 482.2L94.0 507.8L78.0 532.6L64.1 558.6L48.4 584.1L45.9 590.2L42.1 596.2L40.2 603.1L37.3 609.9L27.5 614.8L18.2 621.4L9.0 628.2L-1.6 633.6L-2.6 642.0L-5.0 650.0L-8.3 657.8L-9.0 666.8L-22.5 667.8L-35.5 667.2L-48.3 669.5L-62.1 669.4L-55.3 676.7L-48.8 683.4L-43.9 691.5L-36.9 698.5L-40.9 714.1L-46.6 729.1L-50.1 744.8L-55.3 759.4L-57.5 765.0L-62.4 768.0L-64.9 773.2L-87.6 774.9L-109.7 775.4L-131.8 776.4L-154.5 777.6L-143.9 773.2L-134.0 768.2L-124.5 762.6L-114.4 756.9L-117.6 680.0L-120.7 603.3L-124.8 526.7L-128.8 449.7ZM-26.3 -442.5L-19.6 -450.3L-14.4 -459.5L-7.2 -467.2L-1.4 -475.1L0.7 -493.4L0.6 -511.1L0.4 -528.9L0.7 -547.2L6.7 -548.0L12.0 -550.0L17.2 -552.3L22.7 -553.8L22.6 -547.3L22.6 -541.0L23.1 -534.0L33.4 -536.3L44.2 -536.0L55.0 -536.9L65.8 -538.1L71.3 -547.6L78.3 -556.8L84.6 -566.4L89.5 -576.8L118.6 -560.0L148.0 -543.4L176.5 -525.4L206.4 -509.2L209.5 -523.8L213.9 -538.7L218.6 -553.5L223.5 -568.6L240.7 -562.5L257.6 -554.7L274.7 -547.4L291.5 -539.8L309.5 -534.1L326.8 -527.2L343.7 -519.4L360.3 -512.1L357.1 -496.4L355.9 -480.1L353.0 -464.2L349.6 -448.6L354.6 -422.7L360.4 -397.3L365.8 -371.9L371.5 -346.1L359.0 -324.7L346.4 -302.7L333.6 -280.9L322.6 -257.9L312.8 -256.0L303.5 -254.1L294.4 -251.2L285.0 -248.2L275.3 -249.8L264.9 -250.4L254.9 -253.0L245.3 -254.0L225.7 -244.5L206.7 -236.0L188.0 -226.7L169.5 -217.2L161.0 -210.4L154.7 -201.2L146.3 -194.0L139.3 -185.1L127.9 -182.8L116.5 -181.8L105.1 -180.5L93.1 -178.0L78.5 -165.8L62.3 -154.0L47.5 -140.3L32.0 -128.7L21.7 -130.7L12.1 -132.8L2.4 -134.5L-7.7 -134.8L-14.3 -126.1L-21.1 -116.7L-29.1 -108.2L-35.4 -98.5L-51.5 -96.4L-67.8 -95.9L-83.9 -93.5L-99.9 -92.9L-96.2 -100.0L-94.4 -108.6L-90.7 -116.4L-87.8 -124.4L-88.8 -129.9L-89.2 -135.8L-91.2 -141.3L-92.9 -146.0L-89.5 -154.3L-83.8 -160.9L-79.4 -168.3L-73.7 -175.9L-78.4 -188.2L-84.9 -200.4L-88.0 -213.8L-94.1 -225.5L-86.7 -241.2L-80.8 -256.7L-76.7 -272.7L-70.3 -288.0L-63.4 -291.8L-57.3 -296.3L-52.6 -302.6L-46.0 -306.7L-46.6 -326.5L-47.3 -346.2L-47.7 -366.0L-49.0 -385.4L-43.5 -400.2L-37.1 -414.1L-31.3 -428.1L-26.8 -442.6ZM-528.7 -171.1L-511.9 -170.5L-495.2 -168.8L-478.5 -169.8L-462.4 -170.1L-438.7 -171.6L-415.5 -172.4L-392.4 -173.2L-369.0 -174.9L-366.1 -143.5L-362.7 -111.8L-360.3 -80.0L-356.4 -47.8L-351.0 -46.1L-346.0 -43.2L-341.7 -39.3L-314.3 -39.2L-287.4 -39.4L-260.5 -39.4L-233.0 -39.4L-233.5 -28.5L-231.5 -17.8L-231.3 -6.9L-232.2 3.9L-198.6 4.6L-165.7 4.8L-132.9 3.7L-100.5 3.9L-99.6 34.8L-100.6 65.7L-100.9 96.7L-102.0 128.1L-100.4 136.5L-97.3 145.1L-93.6 153.4L-91.7 162.4L-103.8 161.8L-116.2 161.1L-128.6 161.9L-141.7 161.9L-179.7 161.7L-218.5 162.2L-257.3 162.5L-295.4 163.0L-350.4 163.9L-404.8 163.2L-459.2 162.4L-513.9 162.8L-514.0 125.0L-516.8 87.2L-518.2 49.4L-520.7 11.4L-514.3 10.1L-508.5 12.2L-503.0 10.2L-502.9 1.8L-500.5 -6.9L-498.7 -15.7L-499.1 -23.9L-505.8 -61.1L-513.4 -97.5L-521.9 -133.8L-529.4 -171.1ZM-384.9 -426.6L-314.9 -430.6L-245.4 -434.9L-176.0 -440.1L-105.9 -443.8L-105.8 -437.0L-86.6 -439.7L-66.7 -441.0L-46.8 -441.5L-27.5 -442.9L-32.8 -428.7L-36.7 -413.9L-43.6 -400.3L-48.5 -385.6L-47.7 -366.0L-46.3 -346.3L-46.5 -326.5L-45.9 -306.1L-52.0 -301.8L-58.2 -297.4L-64.1 -292.7L-69.2 -288.1L-76.9 -272.8L-82.8 -257.4L-88.3 -241.9L-92.8 -226.1L-89.4 -213.2L-83.2 -201.0L-78.6 -188.2L-74.4 -175.9L-79.9 -168.7L-84.4 -161.3L-89.3 -154.1L-93.1 -146.7L-92.5 -140.9L-90.0 -135.6L-89.0 -129.8L-86.5 -124.6L-90.4 -116.3L-94.2 -108.5L-95.8 -99.8L-100.4 -92.8L-100.1 -68.2L-99.5 -44.2L-100.6 -20.2L-100.5 3.9L-132.9 3.7L-165.7 3.1L-198.6 3.7L-232.1 3.2L-231.6 -6.9L-232.7 -17.7L-232.0 -28.5L-234.2 -39.0L-260.5 -39.9L-287.4 -39.3L-314.3 -39.9L-341.1 -39.8L-346.5 -42.3L-351.1 -45.9L-356.0 -48.8L-359.0 -80.1L-362.7 -111.8L-366.9 -143.4L-369.5 -175.5L-370.8 -201.1L-372.5 -226.9L-373.4 -252.8L-373.3 -278.2L-375.4 -315.5L-378.5 -352.3L-381.0 -389.1L-383.8 -425.8ZM61.7 282.7L116.1 248.2L171.8 216.1L226.7 182.5L281.7 148.8L329.8 177.3L378.9 205.6L428.6 232.9L477.0 262.5L458.1 287.8L440.6 314.7L422.9 341.3L404.6 367.4L431.9 386.8L458.3 408.5L486.6 427.8L514.2 448.8L518.1 458.9L520.9 469.8L524.5 480.3L528.3 490.9L523.4 494.9L516.7 496.7L511.0 500.5L505.2 504.5L494.7 517.9L485.3 532.8L474.3 546.5L463.4 561.6L422.8 563.4L381.3 565.0L339.8 566.1L298.4 569.4L297.2 582.9L296.5 596.6L296.4 610.4L296.0 623.5L288.4 621.1L281.6 615.9L273.6 613.4L265.8 610.0L252.6 611.2L239.2 611.4L225.7 612.0L212.0 611.9L214.9 605.8L217.0 599.2L207.8 594.6L200.6 587.7L191.7 583.2L184.4 577.1L178.4 578.4L172.2 577.5L166.3 578.5L160.3 580.0L159.9 574.3L160.0 568.4L158.1 562.7L157.6 557.1L145.3 538.6L133.7 519.5L120.4 501.5L109.6 482.8L113.2 478.4L115.6 472.7L120.6 469.3L124.6 465.2L121.7 438.6L120.6 412.7L119.4 386.8L117.5 361.3L109.9 357.3L102.4 353.6L94.5 350.8L87.9 345.6L91.9 341.1L95.3 334.8L100.5 330.0L104.8 324.2L93.2 314.4L82.2 304.0L72.1 292.8L61.0 281.3ZM760.8 703.1L767.0 690.2L771.1 676.0L775.6 662.0L781.2 648.1L775.0 639.8L770.9 630.5L766.2 621.5L761.7 612.7L768.5 602.7L774.7 592.4L781.7 582.6L789.1 572.9L850.1 564.5L910.9 556.8L971.9 549.9L1032.4 541.6L1031.5 574.5L1028.2 606.6L1026.4 638.8L1024.7 670.2L958.5 680.1L892.8 689.2L826.9 696.5L761.3 706.6L761.0 704.0ZM608.9 849.2L646.6 812.7L685.5 777.1L724.0 741.1L761.5 703.9L761.0 705.9L767.6 712.0L772.8 718.4L778.2 724.5L782.3 730.9L779.3 739.9L776.0 748.7L772.3 757.3L767.1 765.3L774.4 773.7L779.7 782.7L786.1 790.9L791.2 799.5L797.8 815.0L803.4 830.4L811.1 845.0L817.8 859.4L816.8 886.5L814.4 912.7L814.5 939.1L813.5 964.8L807.2 964.8L760.8 937.8L714.6 911.5L669.3 883.8L623.0 856.5L619.0 853.3L613.1 852.5L609.2 848.6ZM1024.4 670.3L1027.4 638.8L1028.5 606.6L1031.1 574.5L1032.2 542.2L1033.9 514.2L1036.1 486.2L1036.8 458.0L1039.9 430.4L1042.7 435.5L1046.5 440.9L1049.5 446.7L1052.6 452.5L1060.4 475.7L1067.6 499.1L1075.8 522.1L1081.6 545.6L1081.9 552.0L1084.2 558.1L1083.3 564.4L1084.5 570.0L1093.5 566.7L1102.2 562.2L1109.8 555.8L1118.2 551.7L1120.1 557.2L1121.0 562.6L1123.7 567.5L1126.0 572.9L1134.6 577.8L1145.0 580.1L1154.2 585.5L1164.1 589.4L1182.2 601.5L1200.8 613.1L1218.4 626.1L1237.8 636.8L1248.8 652.0L1259.3 667.5L1270.1 682.8L1280.9 698.4L1287.8 704.1L1293.8 711.4L1301.2 717.1L1307.9 723.3L1301.9 737.1L1297.1 751.8L1289.6 765.3L1285.1 779.5L1282.4 790.1L1281.5 800.4L1278.2 810.3L1276.9 820.1L1280.5 824.4L1285.3 828.6L1282.0 833.3L1279.1 837.8L1275.5 841.8L1271.8 845.2L1265.2 841.0L1258.2 837.2L1250.9 833.7L1243.1 830.5L1230.5 839.5L1218.0 850.0L1205.5 860.3L1192.4 870.4L1187.6 865.8L1182.1 863.6L1177.5 860.3L1164.6 865.4L1152.2 870.3L1140.3 876.2L1127.2 879.2L1131.4 884.8L1135.1 889.7L1138.3 895.6L1132.2 899.8L1128.0 906.4L1122.8 912.1L1117.2 916.2L1101.2 919.7L1085.4 920.2L1069.9 922.3L1054.6 924.7L1042.5 933.7L1031.0 943.4L1018.5 951.8L1007.4 960.7L1002.3 958.2L997.3 956.0L992.1 954.2L986.9 950.3L980.0 957.7L970.9 962.3L962.7 968.2L954.5 975.6L954.9 969.2L957.2 963.8L956.8 958.0L956.9 952.0L947.0 934.7L935.1 918.0L924.7 900.4L913.9 883.2L951.1 860.7L987.6 838.3L1024.3 816.3L1061.3 794.2L1051.2 776.7L1041.2 759.9L1029.4 744.2L1019.2 727.2L1021.5 713.2L1022.6 699.1L1022.9 685.0L1024.8 670.9ZM804.0 58.8L807.5 50.7L808.8 42.1L812.7 34.4L815.7 26.8L820.0 20.6L825.9 16.3L830.6 10.7L836.5 6.3L837.5 -1.2L838.2 -9.1L840.5 -16.8L840.9 -25.3L848.4 -28.8L855.2 -33.9L861.4 -39.7L869.7 -43.5L872.2 -50.3L874.4 -57.4L877.8 -64.1L879.5 -70.7L878.6 -89.0L877.2 -106.6L874.6 -124.1L874.1 -141.7L875.8 -153.0L877.8 -164.3L882.4 -175.0L883.9 -187.1L883.0 -193.4L880.8 -200.2L881.0 -207.4L880.5 -213.9L944.3 -224.7L1009.0 -233.5L1073.8 -241.3L1139.0 -251.7L1114.6 -165.7L1091.1 -79.8L1069.6 6.5L1046.1 92.6L1047.1 99.5L1049.0 106.7L1049.8 114.2L1052.9 122.1L1047.1 121.0L1042.1 120.9L1037.0 121.3L1035.2 135.8L1034.0 150.4L1033.1 165.0L1033.3 179.4L1005.3 173.9L977.7 169.2L950.4 162.7L923.3 157.6L893.4 142.3L863.5 127.9L834.1 112.6L803.9 98.4L798.0 98.6L791.2 98.7L795.8 88.8L798.2 78.7L800.8 68.6L804.9 58.8ZM586.2 1044.6L608.6 1059.0L629.5 1074.4L650.1 1090.4L670.4 1106.6L668.4 1112.4L666.3 1119.1L663.6 1125.5L661.8 1132.4L659.4 1140.2L656.1 1147.8L653.4 1155.8L649.8 1162.6L656.4 1164.4L663.5 1164.6L670.4 1166.7L676.6 1167.7L678.8 1175.4L678.8 1183.2L681.3 1190.7L682.3 1198.2L677.7 1203.6L675.4 1209.8L672.1 1215.3L668.6 1221.3L657.3 1218.1L646.5 1213.4L635.2 1210.1L622.8 1208.7L622.4 1203.1L620.1 1198.9L616.7 1195.6L607.6 1191.4L597.4 1190.4L588.2 1185.7L578.7 1183.5L572.5 1184.9L566.5 1185.6L560.4 1185.8L554.0 1187.1L548.1 1182.2L540.7 1178.3L533.1 1174.7L526.2 1168.8L526.1 1158.6L528.5 1148.1L527.8 1137.5L528.5 1127.1L533.2 1122.4L538.5 1118.8L543.0 1114.3L548.8 1110.8L550.1 1091.9L550.6 1073.1L552.2 1054.4L555.2 1035.4L562.5 1038.5L570.7 1040.6L579.0 1041.7L586.5 1045.0ZM183.9 1483.6L197.1 1481.9L210.0 1481.5L222.9 1480.2L235.2 1479.9L234.4 1473.5L230.6 1468.0L228.6 1461.9L227.0 1455.8L237.4 1453.3L247.7 1451.9L258.2 1452.1L268.1 1448.9L267.6 1443.1L266.7 1436.8L264.9 1430.6L263.9 1424.3L273.0 1422.7L282.3 1422.5L291.4 1420.4L301.1 1419.3L304.6 1428.7L309.7 1438.0L312.6 1448.2L317.5 1457.8L328.0 1454.4L337.9 1450.1L348.2 1447.0L358.0 1444.2L363.3 1448.3L369.0 1450.5L372.6 1455.7L377.6 1458.5L377.0 1467.8L377.3 1477.5L375.7 1487.1L376.2 1496.6L397.3 1506.1L418.3 1516.1L439.2 1526.6L459.4 1537.4L460.0 1542.5L460.1 1547.7L459.2 1552.7L451.0 1560.4L442.0 1567.8L432.4 1574.6L423.0 1581.2L421.4 1587.5L418.8 1592.8L415.4 1597.7L412.7 1603.0L404.4 1604.1L396.6 1606.9L388.4 1608.2L380.1 1609.6L384.1 1617.6L389.3 1625.8L393.7 1634.4L396.6 1642.5L392.2 1641.7L386.5 1642.6L381.1 1641.7L375.3 1640.4L362.5 1633.1L350.6 1623.7L337.1 1617.1L324.1 1609.3L322.3 1615.7L319.1 1621.4L318.7 1628.1L315.4 1634.0L309.4 1620.7L301.0 1608.9L293.9 1596.2L287.9 1584.0L276.4 1577.0L265.8 1569.8L254.7 1563.4L245.3 1555.3L240.6 1546.8L238.1 1537.5L232.3 1529.6L229.1 1521.2L218.0 1511.4L207.2 1501.8L194.8 1493.9L183.6 1483.7ZM662.4 1133.0L669.6 1133.4L676.5 1135.7L683.1 1139.4L690.8 1140.5L703.2 1131.9L715.5 1122.5L727.0 1111.9L739.2 1102.6L745.4 1107.2L749.5 1112.7L754.4 1117.5L759.6 1121.7L755.2 1128.9L750.8 1135.4L747.7 1142.5L744.8 1148.9L742.6 1160.6L739.2 1171.4L738.7 1182.8L736.2 1194.2L731.0 1198.5L727.1 1203.8L722.9 1208.4L718.4 1214.1L714.3 1219.7L710.5 1225.5L707.1 1231.6L694.0 1234.8L680.5 1237.7L667.0 1240.7L653.5 1244.7L656.6 1238.2L661.8 1233.1L665.4 1227.0L669.4 1221.7L672.6 1215.6L675.8 1210.0L679.0 1204.4L681.4 1198.5L681.4 1190.7L678.5 1183.3L678.4 1175.5L677.0 1167.2L670.5 1166.2L663.3 1166.1L656.6 1163.2L649.1 1162.4L652.6 1155.4L656.4 1148.0L660.0 1140.5L662.2 1131.9ZM738.1 1215.4L745.4 1211.4L752.2 1205.5L758.1 1198.6L766.4 1192.9L766.9 1188.1L768.9 1182.8L769.6 1177.1L772.2 1172.1L777.4 1174.3L782.6 1176.8L788.5 1177.6L793.9 1180.4L799.5 1188.2L804.2 1196.9L808.7 1205.8L812.9 1215.5L817.9 1211.3L823.0 1208.2L828.9 1205.6L831.1 1215.3L831.5 1225.8L833.8 1236.0L837.3 1246.2L840.4 1250.6L844.7 1254.4L849.8 1256.9L847.6 1265.4L845.8 1273.3L844.2 1281.2L841.2 1288.2L828.4 1293.5L815.2 1296.6L802.5 1301.3L789.1 1304.9L777.5 1303.3L765.8 1301.4L753.7 1302.5L742.2 1300.2L743.4 1294.4L745.3 1288.6L748.2 1282.6L741.8 1277.4L737.0 1269.8L730.4 1263.8L724.8 1257.3L728.6 1246.9L731.3 1236.5L734.7 1226.4L737.1 1216.3ZM460.3 1552.7L473.1 1547.0L486.9 1543.0L500.0 1537.1L513.9 1532.7L519.4 1523.4L525.9 1514.9L532.1 1506.1L538.1 1496.3L553.2 1480.1L569.6 1464.1L585.1 1447.3L602.3 1431.5L606.1 1423.1L607.4 1413.5L611.9 1405.0L615.4 1396.5L628.5 1396.4L641.9 1394.4L655.4 1395.0L668.4 1393.5L682.1 1400.0L695.2 1407.2L708.1 1414.6L719.8 1422.5L728.2 1423.8L735.7 1425.5L743.1 1427.4L750.0 1429.6L752.8 1421.7L755.1 1414.2L758.1 1407.0L759.5 1398.9L762.1 1414.4L762.4 1429.9L765.3 1445.1L767.5 1460.9L765.2 1478.2L764.8 1496.4L762.2 1514.4L761.5 1533.2L754.2 1563.4L746.4 1594.0L738.1 1624.5L731.6 1655.4L731.4 1661.2L731.2 1667.1L731.7 1672.4L725.1 1674.8L719.8 1678.6L713.9 1681.0L707.0 1682.5L701.4 1673.3L697.1 1663.3L691.8 1653.8L686.5 1644.0L678.7 1651.5L671.2 1658.4L664.3 1665.7L657.8 1674.3L644.5 1670.8L631.3 1666.5L617.5 1665.1L604.9 1662.1L601.4 1651.4L599.6 1641.0L595.0 1631.4L592.9 1620.8L571.3 1620.4L549.2 1619.7L527.1 1618.9L505.9 1617.2L483.1 1634.6L461.9 1653.2L440.8 1671.9L419.2 1690.4L414.1 1677.9L408.5 1666.4L403.4 1654.6L397.8 1643.9L393.5 1634.5L389.1 1625.9L385.4 1617.0L380.4 1609.3L388.4 1608.0L396.5 1606.8L404.4 1603.9L413.0 1603.5L415.9 1597.9L417.5 1592.1L421.5 1587.6L422.7 1581.1L432.6 1574.8L441.5 1567.2L451.1 1560.5L459.6 1552.7ZM154.1 890.3L164.6 880.1L175.6 871.0L186.0 861.3L196.5 853.3L203.4 844.4L209.7 836.3L214.3 827.0L220.3 819.3L228.8 798.0L237.0 776.9L243.3 755.2L250.7 733.9L263.3 722.7L273.9 709.6L287.1 699.2L297.6 686.3L307.0 684.6L315.8 683.0L324.1 679.6L332.8 678.3L382.1 708.1L430.2 740.1L479.6 770.2L529.3 800.1L508.0 823.3L488.5 847.0L468.2 870.1L448.9 894.1L428.3 918.7L407.1 942.8L386.8 967.6L364.7 990.5L363.6 999.9L362.1 1008.4L360.7 1017.0L358.7 1025.5L350.2 1030.1L341.0 1033.5L332.4 1038.0L324.7 1043.8L321.6 1038.3L318.3 1034.0L314.1 1030.2L311.3 1026.0L305.0 1026.4L299.7 1030.3L293.9 1032.7L287.9 1033.9L258.0 997.1L229.2 959.9L199.7 923.3L168.5 887.8L164.0 887.1L159.0 887.8L154.4 889.1ZM801.7 1125.5L821.1 1123.3L840.0 1123.1L858.8 1121.5L877.5 1120.4L882.9 1122.0L887.7 1121.5L898.1 1131.6L908.7 1140.5L919.6 1149.1L929.1 1158.7L925.4 1164.4L921.8 1170.2L918.8 1176.3L915.0 1181.0L914.2 1195.5L914.3 1209.6L914.7 1223.8L914.2 1237.7L907.9 1243.7L901.6 1249.7L894.9 1255.2L889.1 1260.9L891.2 1267.7L893.5 1274.7L896.8 1281.2L899.4 1287.3L886.7 1289.6L874.3 1292.3L862.2 1296.1L849.5 1298.2L833.3 1303.8L817.3 1310.9L800.9 1317.1L785.8 1325.0L786.9 1318.1L787.2 1311.0L788.8 1304.1L802.3 1300.4L815.2 1296.6L828.4 1293.5L840.6 1288.9L842.6 1280.8L844.7 1273.0L848.4 1265.6L849.6 1256.9L846.1 1252.9L841.3 1249.7L837.4 1245.8L835.5 1235.6L832.9 1225.5L829.9 1215.5L828.2 1205.4L823.2 1208.6L818.1 1211.6L813.1 1214.8L808.7 1205.8L803.5 1197.4L798.7 1188.7L793.3 1180.5L788.3 1178.2L783.3 1174.9L777.1 1175.0L772.6 1172.6L779.7 1160.2L786.2 1147.8L794.3 1136.4L801.8 1124.3ZM628.4 1285.7L627.7 1277.9L628.5 1270.5L628.1 1263.0L628.3 1255.1L634.1 1252.3L640.5 1249.5L647.0 1246.8L653.2 1244.9L667.2 1241.5L680.5 1237.8L693.9 1234.3L707.3 1231.5L711.0 1242.9L711.8 1254.8L715.0 1266.0L717.7 1277.9L713.7 1284.0L707.8 1289.9L704.1 1297.3L699.0 1303.2L678.6 1317.1L658.0 1330.1L637.2 1342.9L617.1 1356.3L611.2 1356.6L605.2 1356.5L599.3 1357.3L593.2 1357.0L595.6 1348.9L595.8 1340.2L597.3 1331.7L600.1 1323.3L604.4 1320.1L609.7 1318.2L614.4 1315.2L619.8 1312.9L622.3 1306.0L624.5 1299.3L624.7 1291.9L627.3 1284.7ZM281.5 148.0L330.4 117.1L379.9 86.2L429.8 55.7L479.0 24.4L500.9 35.6L522.3 47.1L544.2 57.6L565.7 69.7L600.5 72.0L635.5 75.4L670.3 81.3L706.2 83.2L709.9 68.8L715.2 54.0L719.5 38.9L724.8 24.4L730.4 21.6L736.9 22.4L742.3 18.7L749.1 18.7L763.1 27.6L776.6 38.5L790.5 48.7L805.0 58.5L801.0 68.6L798.1 78.6L794.3 88.3L791.6 98.5L790.6 113.0L790.2 127.6L787.6 142.1L786.9 157.1L783.4 176.1L778.8 195.3L775.6 214.9L771.5 234.4L776.2 241.4L778.0 249.5L782.4 256.4L784.8 263.7L783.1 284.7L781.7 305.3L780.3 325.8L779.2 347.0L779.9 351.0L783.9 354.2L785.2 358.4L784.2 392.2L783.0 425.5L779.3 458.7L779.0 491.3L763.5 493.2L748.6 496.5L733.4 497.0L718.4 499.1L705.7 492.5L693.1 485.9L681.0 478.5L669.0 471.6L670.8 477.7L671.9 484.3L671.1 491.2L673.1 497.8L654.6 493.9L636.6 488.1L618.1 484.3L600.2 479.2L597.6 474.2L596.5 468.2L593.2 463.2L591.7 458.3L575.4 465.4L560.0 474.1L544.0 481.6L528.7 491.3L524.3 480.4L520.9 469.8L517.0 459.3L513.1 448.9L486.4 428.0L458.5 408.3L431.8 386.9L404.3 367.7L422.1 340.8L440.9 314.9L459.4 288.7L477.8 262.2L428.7 232.7L378.7 205.9L329.8 177.3L281.3 148.9ZM1058.7 121.0L1066.6 120.9L1074.7 120.2L1082.8 121.9L1090.7 121.0L1147.4 123.8L1203.9 125.2L1260.5 126.4L1317.1 129.7L1324.0 128.7L1331.0 131.0L1338.0 130.2L1345.3 130.8L1340.6 144.6L1339.3 159.6L1334.7 173.9L1331.8 188.6L1353.6 186.8L1375.2 186.8L1396.7 185.7L1419.0 183.0L1415.0 199.3L1408.5 213.9L1404.3 229.2L1401.7 244.5L1396.0 245.9L1390.9 245.0L1385.8 245.7L1382.9 254.2L1380.9 262.6L1378.3 270.7L1377.6 279.0L1378.2 289.0L1379.1 298.7L1380.0 308.5L1381.5 317.4L1371.3 319.3L1361.3 321.8L1351.1 323.7L1340.0 323.7L1345.4 356.3L1349.2 388.3L1355.4 420.1L1360.7 452.6L1348.7 458.5L1337.7 465.5L1326.7 472.7L1314.5 478.5L1308.8 485.2L1304.8 493.6L1298.4 500.3L1293.4 508.6L1282.6 510.5L1271.8 512.9L1260.9 515.3L1251.0 518.9L1252.2 526.4L1253.6 534.7L1255.5 542.9L1256.7 551.2L1231.8 552.7L1207.2 556.0L1182.3 557.5L1158.2 561.7L1160.0 567.8L1161.9 574.8L1162.1 582.1L1164.7 589.6L1154.4 585.1L1144.8 580.7L1135.4 575.8L1124.6 572.1L1124.2 567.3L1122.8 562.1L1120.2 557.2L1119.4 552.0L1109.8 555.7L1101.2 560.5L1092.7 565.2L1084.4 570.2L1084.2 564.3L1082.3 558.2L1081.8 552.0L1082.8 546.2L1074.8 522.5L1066.4 499.5L1058.6 476.3L1052.0 452.6L1049.6 446.6L1045.4 441.5L1042.7 435.5L1040.0 430.0L1044.2 352.8L1050.0 275.7L1054.8 198.5L1058.2 121.2ZM1364.4 -288.9L1379.3 -285.3L1394.4 -282.4L1409.4 -279.4L1424.0 -276.9L1426.3 -265.6L1424.9 -253.8L1426.9 -242.2L1427.3 -231.2L1441.4 -226.9L1455.9 -223.5L1470.4 -219.8L1485.2 -215.8L1487.8 -210.4L1493.1 -205.8L1496.5 -199.8L1504.2 -201.9L1512.9 -203.2L1521.7 -203.4L1530.3 -206.0L1530.0 -195.6L1530.2 -186.0L1528.0 -176.5L1527.7 -166.6L1559.8 -172.6L1591.6 -178.3L1623.2 -184.9L1654.8 -189.2L1656.2 -184.5L1658.4 -179.3L1659.3 -173.8L1658.7 -169.0L1675.4 -172.0L1691.9 -173.0L1707.8 -177.0L1723.4 -179.2L1726.7 -168.1L1730.1 -157.0L1734.5 -146.2L1737.6 -134.6L1737.9 -122.0L1738.1 -109.3L1736.9 -96.6L1736.8 -83.8L1742.9 -92.0L1749.7 -99.6L1753.8 -109.1L1760.2 -117.3L1766.1 -118.0L1770.5 -121.7L1775.6 -123.6L1778.6 -113.5L1779.6 -102.9L1781.3 -92.6L1785.1 -82.4L1794.0 -84.7L1803.9 -85.5L1813.4 -88.3L1822.6 -90.2L1821.0 -76.8L1820.2 -63.3L1819.2 -49.8L1817.0 -37.3L1794.9 -29.4L1773.4 -21.5L1751.8 -14.3L1731.1 -5.3L1726.0 -1.7L1721.4 2.4L1717.7 7.3L1713.8 11.3L1710.8 2.3L1710.7 -7.4L1708.2 -16.6L1706.5 -25.3L1678.9 -21.5L1650.7 -18.4L1622.8 -13.8L1594.9 -9.4L1589.3 -13.1L1585.5 -18.8L1579.9 -22.5L1575.1 -27.0L1579.1 -34.4L1582.6 -41.6L1587.2 -48.1L1590.1 -55.7L1585.2 -57.0L1580.0 -58.9L1574.6 -59.9L1568.9 -60.1L1564.8 -51.1L1561.4 -41.7L1558.2 -32.3L1556.1 -22.8L1551.7 -18.8L1546.0 -17.3L1541.5 -13.8L1537.0 -11.2L1538.4 -4.8L1538.7 1.4L1537.8 7.6L1539.4 13.3L1524.5 9.2L1509.9 6.5L1495.4 3.1L1481.3 -0.3L1478.6 -7.0L1478.5 -14.8L1474.9 -21.8L1473.5 -30.3L1464.5 -30.0L1454.8 -31.1L1445.1 -32.0L1434.9 -32.3L1434.2 -27.7L1430.7 -23.5L1428.9 -18.4L1427.2 -13.3L1421.0 -18.2L1415.5 -23.2L1408.7 -26.6L1403.2 -32.3L1408.7 -36.4L1413.6 -41.8L1418.4 -47.2L1421.7 -52.6L1421.8 -66.8L1420.7 -80.4L1420.3 -94.0L1418.4 -107.7L1408.1 -110.1L1397.9 -112.7L1387.7 -115.0L1376.9 -116.8L1369.9 -110.8L1363.4 -104.0L1356.5 -97.6L1348.8 -90.8L1340.0 -94.3L1331.1 -98.4L1322.1 -102.2L1313.4 -104.7L1312.1 -117.0L1312.7 -129.2L1310.0 -141.3L1310.1 -154.0L1318.5 -151.2L1326.5 -149.1L1335.0 -148.9L1343.2 -145.6L1349.8 -178.3L1356.7 -210.7L1362.3 -243.4L1368.0 -276.4L1366.6 -282.5L1364.6 -288.8ZM788.9 1056.3L791.9 1049.6L794.5 1042.4L798.1 1035.6L799.5 1027.4L822.8 1036.2L845.0 1045.5L867.7 1053.6L891.2 1061.1L890.5 1067.2L889.5 1073.5L889.5 1079.8L890.2 1086.6L883.6 1086.0L876.6 1086.4L869.6 1084.4L861.9 1084.6L865.3 1094.1L870.6 1102.3L874.4 1111.1L877.2 1119.6L858.8 1121.4L840.0 1122.9L821.1 1123.1L801.5 1124.6L799.6 1116.9L794.8 1109.7L792.5 1101.5L789.6 1094.0L792.8 1085.6L797.0 1078.0L801.3 1070.6L807.2 1063.5L801.3 1060.3L795.3 1058.7L789.3 1056.0ZM473.6 1280.4L478.8 1277.3L483.8 1272.7L488.3 1267.5L494.3 1264.9L497.8 1255.1L501.9 1246.0L504.0 1236.3L507.8 1227.4L500.1 1229.1L493.1 1231.6L486.1 1234.2L478.9 1236.6L476.1 1232.4L475.3 1226.6L473.4 1221.4L486.7 1208.9L500.3 1195.9L513.4 1182.6L526.0 1169.3L533.5 1174.0L541.1 1177.7L547.2 1183.6L555.2 1187.8L560.7 1187.6L566.3 1184.6L572.3 1183.6L577.8 1183.9L587.7 1187.5L597.9 1188.6L607.5 1191.8L616.7 1195.5L618.3 1199.8L622.4 1203.2L623.7 1207.6L634.6 1212.3L646.4 1213.7L657.6 1217.1L668.7 1220.6L664.2 1226.3L661.7 1233.1L658.2 1239.1L654.5 1244.7L647.2 1247.3L640.7 1250.0L634.4 1253.0L628.6 1255.5L628.3 1263.0L627.6 1270.5L626.7 1277.9L627.3 1284.9L625.5 1280.3L621.3 1276.5L610.0 1278.4L598.7 1280.8L587.4 1283.2L575.8 1286.1L573.8 1281.5L570.3 1277.5L567.0 1273.3L543.9 1275.1L520.2 1277.7L496.4 1278.1L472.9 1280.5ZM287.5 1034.3L293.2 1030.6L299.6 1030.1L305.1 1026.7L310.9 1024.7L314.2 1030.1L318.0 1034.1L321.1 1038.7L324.7 1043.7L332.9 1038.9L341.6 1034.7L349.9 1029.7L358.6 1025.5L360.8 1017.0L362.7 1008.5L364.1 1000.0L365.0 990.7L386.4 967.3L406.9 942.7L428.0 918.5L449.5 894.3L449.4 903.0L449.5 911.8L449.6 920.5L449.7 929.4L457.2 926.7L465.5 925.2L473.3 921.9L481.7 919.1L490.0 928.0L499.3 935.7L506.6 945.4L516.5 952.5L529.5 954.6L542.9 957.7L556.2 961.3L569.8 964.1L573.7 968.0L577.1 973.0L579.2 978.8L582.8 983.3L583.7 999.0L584.0 1014.2L585.4 1029.4L586.8 1044.2L578.8 1042.5L570.7 1040.4L562.6 1038.2L554.0 1035.9L552.8 1054.4L552.5 1073.3L548.7 1091.8L548.9 1111.0L543.5 1115.0L537.9 1118.2L534.1 1123.5L529.1 1127.4L528.0 1137.5L527.1 1148.1L526.5 1158.6L525.9 1168.9L512.9 1182.0L500.0 1195.7L485.7 1207.8L472.9 1221.2L463.9 1227.0L455.1 1232.4L445.3 1236.2L436.0 1240.5L438.7 1231.7L439.3 1221.9L440.4 1212.1L442.6 1203.1L437.1 1190.1L428.7 1179.3L422.8 1167.1L417.2 1154.5L391.6 1162.9L366.0 1169.6L341.1 1178.4L315.9 1185.0L300.3 1181.7L285.2 1177.1L270.2 1172.2L255.0 1167.4L245.8 1157.9L236.6 1148.4L225.8 1140.6L216.2 1130.8L227.9 1122.0L237.9 1111.5L249.5 1102.7L260.2 1092.6L261.1 1083.4L262.3 1074.4L265.0 1065.8L266.6 1056.3L271.2 1050.8L276.0 1044.5L282.4 1039.6L287.0 1033.3ZM-350.5 621.7L-341.1 606.6L-330.6 592.1L-323.3 575.7L-312.5 560.6L-318.0 557.4L-321.7 552.8L-325.4 548.1L-330.3 545.2L-326.4 535.0L-323.1 524.7L-320.0 514.3L-315.9 505.0L-307.5 490.4L-298.3 477.1L-289.7 463.5L-280.8 450.0L-242.7 449.2L-204.5 451.0L-166.3 449.8L-128.0 450.0L-125.9 526.7L-120.9 603.3L-117.3 680.0L-114.9 756.4L-124.8 762.1L-134.8 766.8L-143.7 773.6L-154.1 777.6L-159.3 779.5L-164.3 782.5L-169.8 783.9L-175.9 784.7L-183.1 797.7L-192.5 809.6L-202.2 821.1L-209.2 833.7L-216.5 831.5L-222.7 828.2L-229.3 825.6L-236.2 822.0L-236.9 806.1L-238.5 789.9L-241.4 773.7L-242.5 756.6L-247.4 756.0L-252.3 753.9L-257.0 751.8L-259.4 737.0L-258.4 722.0L-259.8 707.1L-261.5 692.5L-269.8 691.4L-277.5 687.8L-285.7 686.4L-294.3 685.5L-306.9 675.5L-320.7 666.7L-334.1 657.3L-347.9 648.8L-349.3 641.8L-348.1 635.1L-349.5 628.7L-349.2 622.4ZM778.4 492.4L780.0 458.7L781.4 425.4L782.6 392.1L785.6 358.5L782.9 354.7L781.4 350.2L779.3 345.7L780.4 325.9L781.9 305.3L782.3 284.6L785.5 263.6L781.1 257.0L777.9 249.5L776.3 241.4L771.7 234.6L777.0 215.1L778.5 195.3L782.6 176.0L787.4 156.7L789.0 142.2L788.8 127.5L790.6 113.0L792.3 98.2L798.0 97.6L804.5 97.7L834.6 111.6L864.0 127.0L893.5 142.0L922.6 157.2L950.3 163.2L978.0 167.5L1005.1 175.1L1033.3 180.1L1034.9 165.1L1035.1 150.5L1035.3 135.8L1037.1 121.4L1042.1 121.2L1047.1 121.1L1051.9 120.7L1059.2 121.9L1052.6 198.4L1049.3 275.7L1043.4 352.8L1038.9 429.7L1038.8 458.1L1037.0 486.2L1033.5 514.2L1032.9 542.3L971.9 550.3L911.0 557.6L850.2 565.1L788.8 573.0L781.8 582.7L776.1 593.4L768.0 602.5L761.6 611.8L757.1 609.0L753.6 604.7L751.4 599.4L751.4 587.2L751.3 574.3L751.6 561.4L751.0 547.9L757.4 534.3L763.8 519.9L771.9 506.3L779.1 492.1ZM1345.5 131.0L1374.1 130.3L1403.2 131.0L1432.2 132.7L1461.0 131.6L1459.9 140.2L1459.8 148.0L1460.8 155.9L1459.3 164.2L1466.7 163.1L1474.2 161.1L1481.8 161.0L1489.1 159.2L1490.7 152.7L1491.5 145.7L1493.3 139.0L1496.1 132.0L1518.4 132.7L1541.0 134.7L1563.6 136.0L1586.9 137.1L1600.7 135.2L1615.3 136.2L1629.8 135.2L1644.1 134.5L1647.2 151.3L1650.6 168.7L1651.6 186.5L1655.4 204.1L1648.6 204.6L1642.2 206.1L1641.0 223.7L1640.4 241.6L1641.5 259.5L1640.6 276.7L1646.3 274.6L1653.1 273.2L1650.5 284.0L1650.0 294.6L1647.7 304.9L1646.6 316.0L1652.3 314.7L1657.8 312.4L1663.9 312.4L1667.3 341.0L1672.3 369.2L1676.9 397.5L1681.0 425.8L1686.4 434.5L1693.0 442.2L1698.7 450.7L1704.7 459.2L1704.5 464.6L1704.6 470.3L1703.9 476.0L1704.1 482.0L1696.2 485.8L1687.8 490.1L1679.0 493.4L1669.8 496.6L1665.2 483.7L1658.8 471.2L1652.3 458.6L1646.6 446.4L1615.4 450.7L1584.1 453.9L1552.7 456.9L1521.4 461.2L1522.6 467.9L1521.6 474.1L1522.2 480.3L1515.2 484.8L1509.4 489.9L1504.5 496.1L1498.4 499.9L1490.8 501.1L1483.9 502.8L1477.0 504.5L1470.3 505.7L1462.8 510.1L1456.9 516.4L1451.2 522.9L1444.8 528.2L1439.0 523.7L1433.3 520.6L1427.6 517.4L1422.2 512.8L1412.4 515.1L1402.2 516.5L1392.0 518.0L1381.2 518.6L1383.7 508.0L1385.8 497.9L1388.3 487.8L1390.5 477.0L1389.9 470.0L1388.0 462.7L1385.8 455.5L1385.2 447.1L1379.6 449.8L1372.8 448.8L1366.7 452.0L1359.8 452.6L1356.1 420.0L1351.0 388.1L1344.8 356.3L1340.5 324.5L1350.9 322.3L1361.2 321.6L1371.5 320.6L1382.3 317.6L1381.1 308.3L1378.6 298.8L1378.0 289.1L1377.1 280.0L1380.2 271.2L1382.4 262.9L1382.8 254.2L1385.3 245.7L1391.0 246.0L1395.9 244.6L1400.2 244.7L1405.5 229.5L1408.7 214.0L1414.8 199.2L1418.3 183.5L1396.7 185.6L1375.1 186.1L1353.6 187.7L1331.3 188.8L1335.1 174.0L1339.1 159.6L1341.5 144.8L1345.1 130.4ZM-99.5 3.7L-99.8 -20.2L-99.1 -44.2L-100.1 -68.2L-99.8 -92.9L-83.9 -94.0L-67.8 -95.5L-51.7 -97.6L-36.1 -98.9L-29.2 -108.3L-20.9 -116.6L-13.9 -125.8L-7.6 -135.2L2.4 -134.8L11.9 -131.5L21.8 -131.2L30.7 -128.6L47.5 -140.4L61.9 -154.4L78.4 -165.9L93.0 -179.0L105.0 -180.8L116.4 -182.3L127.8 -183.5L139.4 -185.1L146.9 -193.4L153.6 -202.3L161.4 -210.0L169.5 -218.3L188.2 -226.3L206.4 -236.6L225.9 -244.2L244.5 -253.3L254.9 -253.3L264.9 -250.4L275.4 -250.5L285.6 -248.2L294.5 -251.0L303.6 -253.5L312.7 -256.5L322.0 -257.8L335.7 -239.1L349.3 -219.8L363.9 -201.1L377.4 -181.5L404.8 -168.8L430.7 -153.7L456.8 -139.0L483.2 -126.3L487.3 -122.3L492.9 -121.0L476.9 -90.4L459.8 -60.9L443.3 -31.2L428.0 -0.4L440.9 4.5L453.8 11.1L466.7 17.6L478.8 24.8L430.2 56.4L380.2 86.6L331.1 118.1L280.9 147.7L226.0 181.4L171.2 215.0L116.6 249.0L61.2 282.4L52.8 277.2L43.1 274.6L33.8 271.1L24.4 267.6L16.8 267.7L8.6 267.2L0.6 268.6L-7.3 269.0L-11.8 252.4L-16.1 235.0L-19.7 217.5L-24.2 200.9L-30.2 201.3L-35.5 203.2L-42.7 192.8L-49.9 182.3L-57.9 172.4L-65.8 162.3L-72.0 161.9L-78.5 162.5L-85.0 162.2L-91.1 162.0L-94.0 153.5L-97.9 145.2L-99.7 136.3L-102.9 127.0L-100.9 96.7L-101.7 65.7L-101.7 34.8L-100.6 4.3ZM448.5 894.2L468.9 870.8L489.8 848.1L509.5 824.6L529.2 801.2L548.5 813.0L569.2 824.0L588.9 836.5L608.4 849.4L613.4 851.8L618.7 853.8L623.8 856.0L615.1 879.4L604.5 901.2L596.9 924.2L587.6 946.6L589.7 952.3L594.0 957.6L597.2 963.4L600.6 969.2L616.3 973.4L632.0 979.9L648.4 984.0L664.0 990.0L668.6 1010.6L671.2 1032.2L674.0 1053.8L676.8 1074.5L675.0 1082.7L675.0 1090.7L672.3 1098.2L670.2 1106.1L649.3 1091.4L628.7 1075.6L608.5 1059.1L587.4 1044.3L586.3 1029.3L585.3 1014.2L583.9 999.0L582.4 983.3L579.7 978.5L575.5 974.0L573.9 967.8L570.5 963.3L556.2 961.2L542.7 958.9L529.3 955.7L516.4 952.9L507.0 945.0L498.1 936.9L490.4 927.6L482.0 918.9L473.0 921.0L465.3 924.5L457.4 927.6L449.0 929.1L448.4 920.5L450.2 911.8L448.0 903.0L449.3 894.9Z";
+
+  /* Projection must match the build of BASE: Mercator, 600 units per degree of longitude. */
+  var RR = 600 * 180 / Math.PI, LON0 = -75.25, LAT1 = 42.20;
+  function my(lat) { return Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)); }
+  var TOP = my(LAT1);
+  function proj(lat, lng) { return [(lng - LON0) * 600, (TOP - my(lat)) * RR]; }
+  var WORLD = { w: 1320, h: 1398 };
+
+  var ORIGIN = { name: 'Williamsburg', lat: 40.7142, lng: -73.9614 };
+  var DEPART = 12 * 60, LEAVE = 17 * 60;
+
+  /* mi and min are road estimates from Williamsburg. */
+  var FARMS = [
+    { id: 'fishkill', name: 'Fishkill Farms', town: 'Hopewell Junction', addr: '9 Fishkill Farm Rd, Hopewell Junction, NY 12533', lat: 41.553, lng: -73.811, mi: 69, min: 100, short: true, bigTown: true,
+      tags: ['Wagon rides', 'Corn maze', 'Live music in the courtyard', 'Treasury Cider bar', 'Cider donuts', 'Farm store with pies and ice cream'],
+      near: 'Beacon, about 25 min away: Main Street shops and cafes, the Hudson waterfront and the Dia Beacon art museum.',
+      hours: 'Sat and Sun 9 AM to 6 PM through Nov 1',
+      caution: 'Picking needs an online reservation (one per group of up to 5). Wagon rides and the corn maze are ticketed too.' },
+    { id: 'pennings', name: 'Pennings Orchard', town: 'Warwick', addr: '169 State Route 94 S, Warwick, NY 10990', lat: 41.229, lng: -74.349, mi: 67, min: 115, short: true, bigTown: true,
+      tags: ['Cidery and beer garden', 'Ice cream parlor', 'Farm market', 'Hayrides', 'Kiddie corn maze', 'Farm animals'],
+      near: 'Warwick village, 10 to 15 min: Main Street, the Warwick Valley Winery & Distillery and the town that hosts Applefest.',
+      hours: null,
+      caution: 'Some Saturdays have night picking. Check which one applies to your day.' },
+    { id: 'barton', name: 'Barton Orchards', town: 'Poughquag', addr: '63 Apple Tree Ln, Poughquag, NY 12570', lat: 41.627, lng: -73.693, mi: 82, min: 115, short: true, bigTown: false,
+      tags: ['Corn maze', 'Apple cannons', 'Haunted house (October)', 'Mini golf', 'Giant slide and pedal karts', 'Petting zoo', 'Tap room with weekend live music'],
+      near: 'Millbrook village is about 20 min away for coffee and a walk. There is no real town right at the farm.',
+      hours: null, caution: null },
+    { id: 'masker', name: 'Masker Orchards', town: 'Warwick', addr: '45 Ball Rd, Warwick, NY 10990', lat: 41.278, lng: -74.305, mi: 65, min: 110, short: false, bigTown: true,
+      tags: ['Drive-through orchard', 'Horse-drawn wagon rides', 'Apple maze', 'Haunted house', 'Pumpkin patch', 'Barnyard animals', 'Picnic under the trees'],
+      near: 'Warwick village is about 10 min away: Main Street, the winery and distillery, and Applefest.',
+      hours: 'Daily 9 AM to 5 PM (listed)', caution: null },
+    { id: 'applededave', name: "Apple Dave's Orchard", town: 'Warwick', addr: '82 Four Corners Rd, Warwick, NY 10990', lat: 41.225, lng: -74.402, mi: 70, min: 120, short: false, bigTown: true,
+      tags: ['Wagon rides', 'Nature trails', 'Cider donuts', 'Live music on select weekends', 'Face painting', 'On-site winery and distillery'],
+      near: 'Warwick village is about 15 min away: Main Street, the winery and distillery, and Applefest.',
+      hours: null,
+      caution: 'One listing puts apples at September to early October and pumpkins in mid-October. Call to confirm apples are still being picked.' },
+    { id: 'appleridge', name: 'Apple Ridge Orchards', town: 'Warwick', addr: '101 Jessup Rd, Warwick, NY 10990', lat: 41.264, lng: -74.401, mi: 68, min: 115, short: false, bigTown: true,
+      tags: ['Hayride', 'Animal meet-and-greet', 'Observation beehive', 'Weekend BBQ', 'October movie night'],
+      near: 'Warwick village is about 10 to 15 min away: Main Street, the winery and distillery, and Applefest.',
+      hours: 'Thu to Sun (listed)', caution: 'Confirm it is open on your day.' },
+    { id: 'outhouse', name: 'Outhouse Orchards', town: 'North Salem', addr: 'Hardscrabble Rd, North Salem, NY 10560', lat: 41.338, lng: -73.609, mi: 56, min: 80, short: false, bigTown: false,
+      tags: ['Hayrides', 'Corn maze', 'Giant jumping pillow', 'Gem mining', 'Highland cows', 'Hard cider', 'Smoked turkey legs and doughnuts'],
+      near: 'Katonah and Ridgefield, CT are about 15 to 20 min away for shops and food.',
+      hours: null, caution: 'Street number not confirmed. Search the farm by name in Maps.' },
+    { id: 'davies', name: 'Dr. Davies Farm', town: 'Congers', addr: '306 Route 304, Congers, NY 10920', lat: 41.142, lng: -73.951, mi: 38, min: 65, short: false, bigTown: true,
+      tags: ['Corn maze', 'Hayrides to the pumpkin patch', 'Tractor rides', 'Fresh-pressed cider'],
+      near: 'Nyack and Piermont are about 15 min away: riverfront walks, cafes and small shops. Shortest drive on the list.',
+      hours: null, caution: null },
+    { id: 'lawrence', name: 'Lawrence Farms Orchards', town: 'Newburgh', addr: '39 Colandrea Rd, Newburgh, NY 12550', lat: 41.509, lng: -74.024, mi: 66, min: 95, short: false, bigTown: true,
+      tags: ['Apples and pears', 'Farm market', 'Apple turnovers and dumplings'],
+      near: 'Newburgh waterfront is about 10 min away, and Beacon is across the river, about 20 min.',
+      hours: 'Daily 9 AM to 4 PM (listed)', caution: 'Closing at 4 leaves about 2.5 hours. The picking area is separate from the farm store.' },
+    { id: 'minards', name: "Minard's Family Farms", town: 'Clintondale', addr: '250 Hurds Rd, Clintondale, NY 12515', lat: 41.652, lng: -74.052, mi: 84, min: 115, short: false, bigTown: true,
+      tags: ['Three-acre corn maze', 'Giant bounce pillow', 'Pumpkin bowling', 'Apple checkers', 'Petting zoo', "Mac's Tavern for beer, wine and cider", 'Cider donuts'],
+      near: 'New Paltz, about 20 min away: Main Street shops and food.',
+      hours: null, caution: null },
+    { id: 'hurds', name: 'Hurds Family Farm', town: 'Modena', addr: '2187 Route 32, Modena, NY 12548', lat: 41.667, lng: -74.082, mi: 86, min: 120, short: false, bigTown: true,
+      tags: ['Corn maze', 'Apple launcher', 'Cow-train ride', 'Obstacle course', 'Giant slide', 'Pony rides', 'Koi pond'],
+      near: 'New Paltz, about 15 min away: Main Street shops and food, with the Shawangunk ridge behind it.',
+      hours: 'Through October (listed)', caution: null },
+    { id: 'stoneridge', name: 'Stone Ridge Orchard', town: 'Stone Ridge', addr: '3012 Route 213, Stone Ridge, NY 12484', lat: 41.848, lng: -74.156, mi: 98, min: 135, short: false, bigTown: false,
+      tags: ['Tasting room', 'Wood-fired pizza stand', 'Farm stand', 'Glamping tents'],
+      near: 'High Falls and Rosendale are 10 to 15 min away, and New Paltz is about 20 min.',
+      hours: null, caution: null },
+    { id: 'greig', name: 'Greig Farm', town: 'Red Hook', addr: '227 Pitcher Ln, Red Hook, NY 12571', lat: 42.007, lng: -73.864, mi: 108, min: 135, short: false, bigTown: true,
+      tags: ['Market and cafe', 'Taproom', 'Goats', 'Koi pond', 'Four miles of trails', 'Catskill views'],
+      near: 'Red Hook and Rhinebeck villages are 10 to 15 min away for shops and a walk.',
+      hours: null, caution: null },
+    { id: 'kelders', name: "Kelder's Farm", town: 'Kerhonkson', addr: '5755 US-209, Kerhonkson, NY 12446', lat: 41.784, lng: -74.337, mi: 105, min: 140, short: false, bigTown: false,
+      tags: ['Giant jumping pillow', 'Mini golf', 'Tube slides', 'Petting zoo', 'Giant corn maze', 'Hayrides', 'Taproom'],
+      near: 'Rosendale and Stone Ridge are about 20 min away. No real town at the farm.',
+      hours: null, caution: null }
+  ];
+  var BYID = {}; FARMS.forEach(function (f, i) { f.order = i; f.xy = proj(f.lat, f.lng); BYID[f.id] = f; });
+  var ORIGIN_XY = proj(ORIGIN.lat, ORIGIN.lng);
+
+  var TOWNS = [
+    ['Warwick', 41.2565, -74.3599, 'end'], ['Beacon', 41.5048, -73.9696, 'start'],
+    ['New Paltz', 41.7476, -74.0868, 'end'], ['Rhinebeck', 41.9265, -73.9126, 'start'], ['Kingston', 41.927, -73.9974, 'end'], ['Nyack', 41.0909, -73.918, 'end'], ['Long Island Sound', 41.02, -73.38, 'sea']
+  ];
+  var RIVER = [[40.70,-74.02],[40.80,-73.97],[40.85,-73.95],[40.95,-73.91],[41.05,-73.89],[41.15,-73.92],[41.20,-73.96],[41.28,-73.96],[41.32,-73.99],[41.40,-73.96],[41.50,-73.97],[41.58,-73.95],[41.66,-73.94],[41.72,-73.94],[41.82,-73.95],[41.92,-73.94],[42.00,-73.92],[42.10,-73.93]];
+
+
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function $(id) { return document.getElementById(id); }
+  function dur(m) { var h = Math.floor(m / 60), r = m % 60; return (h ? h + ' h ' : '') + (r ? r + ' min' : (h ? '' : '0 min')); }
+  function dshort(m) { var h = Math.floor(m / 60), r = m % 60; return (h ? h + 'h' : '') + (r ? (h ? ' ' : '') + r + 'm' : ''); }
+  function clock(m) { var h = Math.floor(m / 60), r = m % 60, ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + (r < 10 ? '0' : '') + r + ' ' + ap; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function stats(f) { var arrive = DEPART + f.min; return { arrive: arrive, onSite: LEAVE - arrive, home: LEAVE + f.min }; }
+  function dirUrl(f) {
+    return 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent('Williamsburg, Brooklyn, NY') +
+      '&destination=' + encodeURIComponent(f.name + ', ' + f.addr) + '&travelmode=driving';
+  }
+  var mq = window.matchMedia('(max-width: 760px)');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- map ---------------- */
+  var svg = $('map');
+  var cw = 800, ch = 600, pad = { l: 0, r: 0, t: 0, b: 0 };
+  var vb = { x: 0, y: 0, w: 900, h: 700 };
+  var scaled = [];
+  var userMoved = false;
+
+  var defs = el('defs', {}, svg);
+  var gBase = el('g', {}, svg);
+  el('rect', { x: -4000, y: -4000, width: 9000, height: 9000, 'class': 'water' }, gBase);
+  var gInk = el('g', {}, gBase);
+  var landFill = el('path', { d: BASE, 'class': 'landfill' }, gInk);
+  /* river: wobble baked into the points once */
+  var jseed = 3;
+  function jr() { jseed = (jseed * 16807) % 2147483647; return jseed / 2147483647 - 0.5; }
+  var rv = RIVER.map(function (p) { return proj(p[0], p[1]); }), rvj = [];
+  rv.forEach(function (q, i) {
+    rvj.push([q[0] + jr() * 1.5, q[1] + jr() * 1.5]);
+    var nx = rv[i + 1];
+    if (nx) for (var s = 1; s <= 3; s++) { var t = s / 4; rvj.push([q[0] + (nx[0] - q[0]) * t + jr() * 3, q[1] + (nx[1] - q[1]) * t + jr() * 3]); }
+  });
+  var riverPts = rvj.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ');
+  el('polyline', { points: riverPts, 'class': 'river' }, gInk);
+  var landLine = el('path', { d: BASE, 'class': 'landline' }, gInk);
+  var riverLine = el('polyline', { points: riverPts, 'class': 'riverline' }, gInk);
+
+  /* little doodled apple trees on the land, placed once with a seeded shuffle */
+  var gTrees = el('g', {}, svg);
+  (function () {
+    var seed = 11;
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    var made = 0, tries = 0, spots = [];
+    while (made < 60 && tries < 700) {
+      tries++;
+      var x = 120 + rnd() * 760, y = 120 + rnd() * 1000;
+      var p = svg.createSVGPoint(); p.x = x; p.y = y;
+      var ok = true;
+      try { ok = landFill.isPointInFill(p); } catch (e) { ok = true; }
+      if (!ok) continue;
+      var near = false;
+      FARMS.forEach(function (f) { if (Math.hypot(f.xy[0] - x, f.xy[1] - y) < 34) near = true; });
+      if (Math.hypot(ORIGIN_XY[0] - x, ORIGIN_XY[1] - y) < 50) near = true;
+      spots.forEach(function (s) { if (Math.hypot(s[0] - x, s[1] - y) < 40) near = true; });
+      if (near) continue;
+      spots.push([x, y]); made++;
+      var g = el('g', { 'class': 'tree' }, gTrees);
+      var tall = 0.8 + rnd() * 0.5;
+      el('path', { d: 'M0 0 L0 -7' }, g);
+      el('circle', { cx: 0, cy: -12 * tall, r: 6 * tall }, g);
+      el('circle', { cx: -2.4, cy: -13 * tall, r: 1.8, 'class': 'fruit' }, g);
+      el('circle', { cx: 2.6, cy: -10 * tall, r: 1.8, 'class': 'fruit' }, g);
+      scaled.push({ g: g, x: x, y: y, s: 1 });
+    }
+  })();
+
+  var gTown = el('g', {}, svg);
+  TOWNS.forEach(function (t) {
+    var xy = proj(t[1], t[2]);
+    var g = el('g', { 'class': 'town' + (t[3] === 'sea' ? ' sea' : '') }, gTown);
+    if (t[3] !== 'sea') el('circle', { r: 2.5 }, g);
+    var anchor = t[3] === 'end' ? 'end' : (t[3] === 'sea' ? 'middle' : 'start');
+    var tx = el('text', { x: anchor === 'end' ? -7 : (anchor === 'middle' ? 0 : 7), y: 4, 'text-anchor': anchor }, g);
+    tx.textContent = t[0];
+    scaled.push({ g: g, x: xy[0], y: xy[1], s: 1 });
+  });
+
+  var route = el('path', { 'class': 'route', d: 'M0 0' }, svg);
+  route.style.display = 'none';
+
+  var gOrigin = el('g', { 'class': 'origin' }, svg);
+  el('path', { d: 'M0 -13 L3.6 -4.4 L12.4 -4 L5.6 1.8 L7.8 10.6 L0 5.8 L-7.8 10.6 L-5.6 1.8 L-12.4 -4 L-3.6 -4.4 Z' }, gOrigin);
+  var ot = el('text', { x: 0, y: 28, 'text-anchor': 'middle' }, gOrigin); ot.textContent = 'Williamsburg';
+  scaled.push({ g: gOrigin, x: ORIGIN_XY[0], y: ORIGIN_XY[1], s: 1 });
+
+  var gPins = el('g', {}, svg);
+  FARMS.forEach(function (f) {
+    var g = el('g', { 'class': 'pin', tabindex: 0, role: 'button', 'aria-label': f.name + ', ' + dur(f.min) + ' drive', 'data-id': f.id }, gPins);
+    el('circle', { 'class': 'hit', cx: 0, cy: -24, r: 24 }, g);
+    el('path', { 'class': 'stem', d: 'M0 0 L0 -13' }, g);
+    el('circle', { 'class': 'tip', r: 3 }, g);
+    el('rect', { 'class': 'box', x: -13, y: -39, width: 26, height: 26, rx: 7 }, g);
+    var n = el('text', { 'class': 'num', y: -21 }, g); n.textContent = String(f.order + 1);
+    var l = el('text', { 'class': 'lbl', x: 20, y: -21 }, g); l.textContent = f.name;
+    f.pin = g;
+    f.entry = { g: g, x: f.xy[0], y: f.xy[1], s: 1 };
+    scaled.push(f.entry);
+  });
+
+  function visRect() {
+    var vw = Math.max(80, cw - pad.l - pad.r), vh = Math.max(80, ch - pad.t - pad.b);
+    return { vw: vw, vh: vh };
+  }
+  function measure() {
+    var r = svg.getBoundingClientRect();
+    if (r.width > 0) { cw = r.width; ch = r.height; }
+    if (mq.matches) {
+      var hud = $('hud').getBoundingClientRect();
+      pad = { l: 0, r: 0, t: hud.bottom + 12, b: state.sheet === 'peek' ? Math.min(ch * 0.55, peekH() + 16) : Math.round(ch * 0.5) + 8 };
+    } else {
+      var lf = $('left').getBoundingClientRect();
+      pad = { l: lf.right + 24, r: 372 + 14 + 60, t: 24, b: 24 };
+    }
+  }
+  function clampVB() {
+    vb.w = Math.max(70, Math.min(vb.w, 2600));
+    vb.h = vb.w * ch / cw;
+    var cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2;
+    cx = Math.max(-60, Math.min(WORLD.w + 60, cx));
+    cy = Math.max(-60, Math.min(WORLD.h + 60, cy));
+    vb.x = cx - vb.w / 2; vb.y = cy - vb.h / 2;
+  }
+  function apply() {
+    clampVB();
+    svg.setAttribute('viewBox', vb.x.toFixed(2) + ' ' + vb.y.toFixed(2) + ' ' + vb.w.toFixed(2) + ' ' + vb.h.toFixed(2));
+    var k = vb.w / cw;
+    landLine.setAttribute('stroke-width', (1.3 * k).toFixed(3));
+    riverLine.setAttribute('stroke-width', (1.2 * k).toFixed(3));
+    riverLine.setAttribute('stroke-dasharray', (1.5 * k).toFixed(2) + ' ' + (5 * k).toFixed(2));
+    route.setAttribute('stroke-width', (2.2 * k).toFixed(3));
+    route.setAttribute('stroke-dasharray', (2 * k).toFixed(2) + ' ' + (8 * k).toFixed(2));
+    if (state.sel && BYID[state.sel]) {
+      var sf = BYID[state.sel], sx = (sf.xy[0] - vb.x) / vb.w, lb = sf.pin.querySelector('.lbl');
+      var availR = cw * (1 - sx), need = sf.name.length * 10 + 38, flip = availR < need && cw * sx > availR;
+      lb.setAttribute('x', flip ? -26 : 26); lb.setAttribute('text-anchor', flip ? 'end' : 'start');
+    }
+    scaled.forEach(function (e) {
+      e.g.setAttribute('transform', 'translate(' + e.x.toFixed(2) + ' ' + e.y.toFixed(2) + ') scale(' + (k * e.s).toFixed(4) + ')');
+    });
+  }
+  function fitPoints(pts, p) {
+    var minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    pts.forEach(function (q) { minx = Math.min(minx, q[0]); maxx = Math.max(maxx, q[0]); miny = Math.min(miny, q[1]); maxy = Math.max(maxy, q[1]); });
+    var v = visRect();
+    var k = Math.max((maxx - minx) * (1 + 2 * p) / v.vw, (maxy - miny) * (1 + 2 * p) / v.vh, 0.15);
+    var cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+    return { x: cx - k * (pad.l + v.vw / 2), y: cy - k * (pad.t + v.vh / 2), w: k * cw, h: 0 };
+  }
+  function centerOn(xy, w) {
+    var v = visRect(), k = w / cw;
+    var bias = mq.matches ? 24 : 0; /* the pin box rises above its tip, so seat the tip a little low */
+    return { x: xy[0] - k * (pad.l + v.vw / 2), y: xy[1] - k * (pad.t + v.vh / 2 + bias), w: w, h: 0 };
+  }
+  var raf = 0, pending = false;
+  function schedule() { if (pending) return; pending = true; requestAnimationFrame(function () { pending = false; apply(); }); }
+  function animateTo(t) {
+    cancelAnimationFrame(raf);
+    t.h = t.w * ch / cw;
+    if (reduce) { vb = t; apply(); return; }
+    var s = { x: vb.x, y: vb.y, w: vb.w }, t0 = performance.now(), D = 380;
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - p, 3);
+      vb = { x: s.x + (t.x - s.x) * e, y: s.y + (t.y - s.y) * e, w: s.w + (t.w - s.w) * e, h: 0 };
+      apply();
+      if (p < 1) raf = requestAnimationFrame(step);
+    })(t0);
+  }
+  function showAll(animate) {
+    var pts = FARMS.map(function (f) { return f.xy; }).concat([ORIGIN_XY, [ORIGIN_XY[0], ORIGIN_XY[1] + 40]]);
+    var t = fitPoints(pts, 0.07);
+    userMoved = false;
+    if (animate) animateTo(t); else { vb = t; apply(); }
+  }
+  function zoomAt(factor, sx, sy) {
+    cancelAnimationFrame(raf);
+    var wx = vb.x + vb.w * (sx / cw), wy = vb.y + vb.h * (sy / ch);
+    var nw = Math.max(70, Math.min(2600, vb.w * factor));
+    var f = nw / vb.w;
+    vb.x = wx - (wx - vb.x) * f; vb.y = wy - (wy - vb.y) * f; vb.w = nw;
+    userMoved = true; schedule();
+  }
+  function ensureVisible(f) {
+    var k = vb.w / cw, v = visRect(), m = 0.12;
+    var px = (f.xy[0] - vb.x) / k, py = (f.xy[1] - vb.y) / k;
+    var ok = px > pad.l + v.vw * m && px < pad.l + v.vw * (1 - m) && py > pad.t + 48 + v.vh * m * 0.5 && py < pad.t + v.vh * (1 - m);
+    if (!ok) animateTo(centerOn([f.xy[0], f.xy[1]], vb.w));
+  }
+  /* when neighbours would sit under the selected pin, zoom in until they are about 44px apart */
+  function separateIfCrowded(f) {
+    var nearest = Infinity;
+    FARMS.forEach(function (o) { if (o !== f) nearest = Math.min(nearest, Math.hypot(o.xy[0] - f.xy[0], o.xy[1] - f.xy[1])); });
+    var kNeeded = nearest / 46;
+    if (vb.w / cw > kNeeded) {
+      userMoved = true;
+      animateTo(centerOn(f.xy, Math.max(70, kNeeded * cw)));
+      return true;
+    }
+    return false;
+  }
+
+  /* pointer: drag to pan, pinch to zoom, wheel to zoom, tap a pin to select */
+  var ptrs = {}, dragInfo = null, pinch = null, moved = false, downPin = null;
+  svg.addEventListener('pointerdown', function (e) {
+    cancelAnimationFrame(raf);
+    if (Object.keys(ptrs).length === 0) downPin = e.target.closest ? e.target.closest('.pin') : null;
+    try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var ids = Object.keys(ptrs);
+    moved = false;
+    if (ids.length === 1) dragInfo = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y };
+    if (ids.length === 2) {
+      var a = ptrs[ids[0]], b = ptrs[ids[1]];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), w: vb.w };
+      dragInfo = null;
+    }
+    svg.classList.add('dragging');
+  });
+  svg.addEventListener('pointermove', function (e) {
+    if (!ptrs[e.pointerId]) return;
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var ids = Object.keys(ptrs);
+    if (ids.length === 2 && pinch) {
+      var a = ptrs[ids[0]], b = ptrs[ids[1]];
+      var d = Math.hypot(a.x - b.x, a.y - b.y);
+      var rect = svg.getBoundingClientRect();
+      zoomAt((pinch.w * pinch.d / Math.max(d, 1)) / vb.w, (a.x + b.x) / 2 - rect.left, (a.y + b.y) / 2 - rect.top);
+      moved = true;
+    } else if (dragInfo) {
+      var dx = e.clientX - dragInfo.x, dy = e.clientY - dragInfo.y;
+      if (Math.abs(dx) + Math.abs(dy) > 5) moved = true;
+      if (moved) { vb.x = dragInfo.vx - dx * vb.w / cw; vb.y = dragInfo.vy - dy * vb.h / ch; userMoved = true; schedule(); }
+    }
+  });
+  function endPtr(e) {
+    delete ptrs[e.pointerId];
+    var ids = Object.keys(ptrs);
+    if (ids.length === 1) { var p = ptrs[ids[0]]; dragInfo = { x: p.x, y: p.y, vx: vb.x, vy: vb.y }; pinch = null; moved = true; }
+    if (ids.length === 0) { dragInfo = null; pinch = null; svg.classList.remove('dragging'); }
+  }
+  svg.addEventListener('pointerup', function (e) {
+    var wasMoved = moved;
+    var tgt = downPin;
+    downPin = null;
+    endPtr(e);
+    if (tgt && !wasMoved) select(tgt.getAttribute('data-id'), 'map');
+    else if (!tgt && !wasMoved && mq.matches && state.sheet !== 'peek') setSheet('peek', true);
+  });
+  svg.addEventListener('pointercancel', endPtr);
+  svg.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var r = svg.getBoundingClientRect();
+    zoomAt(e.deltaY > 0 ? 1.18 : 1 / 1.18, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  svg.addEventListener('keydown', function (e) {
+    var t = e.target.closest ? e.target.closest('.pin') : null;
+    if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(t.getAttribute('data-id'), 'map'); }
+  });
+  $('zin').addEventListener('click', function () { zoomAt(1 / 1.5, pad.l + visRect().vw / 2, pad.t + visRect().vh / 2); });
+  $('zout').addEventListener('click', function () { zoomAt(1.5, pad.l + visRect().vw / 2, pad.t + visRect().vh / 2); });
+  $('zall').addEventListener('click', function () { showAll(true); });
+
+  /* ---------------- list, peek, card ---------------- */
+  var state = { sort: 'rec', townOnly: false, sel: null, sheet: 'peek' };
+  var listEl = $('list'), car = $('car'), sheet = $('sheet'), sheetBody = $('sheetBody'), card = $('card'), listpanel = $('listpanel'), leftEl = $('left');
+  var peekCache = 210;
+  function peekH() {
+    if (mq.matches && state.sheet === 'peek') { var h = sheet.getBoundingClientRect().height; if (h > 60) peekCache = h; }
+    return peekCache;
+  }
+  function syncSheetVar() { var h = mq.matches ? Math.round(sheet.getBoundingClientRect().height) : 0; document.documentElement.style.setProperty('--sheetH', h + 'px'); }
+
+  function sorted() {
+    var a = FARMS.filter(function (f) { return !state.townOnly || f.bigTown; });
+    if (state.sort === 'drive') a.sort(function (p, q) { return p.min - q.min; });
+    else if (state.sort === 'todo') a.sort(function (p, q) { return q.tags.length - p.tags.length || p.min - q.min; });
+    else a.sort(function (p, q) { return (q.short ? 1 : 0) - (p.short ? 1 : 0) || p.order - q.order; });
+    return a;
+  }
+  function renderList() {
+    var a = sorted();
+    $('count').textContent = a.length + ' of ' + FARMS.length;
+    if (!a.length) { listEl.innerHTML = '<li class="empty">No orchards match.</li>'; }
+    else {
+      listEl.innerHTML = a.map(function (f) {
+        var st = stats(f), tight = st.onSite < 160;
+        return '<li><button type="button" class="row" data-id="' + f.id + '" aria-pressed="' + (state.sel === f.id) + '">' +
+          '<span class="n">' + (f.order + 1) + '</span>' +
+          '<span class="r-main"><span class="r-name">' + esc(f.name) + (f.short ? '<span class="tag">Shortlist</span>' : '') + (tight ? '<span class="tag warn">Short day</span>' : '') + '</span>' +
+          '<span class="r-town">' + esc(f.town) + ' &middot; ' + (f.bigTown ? 'town nearby' : 'farm-focused') + '</span>' +
+          '<span class="r-do">' + esc(f.tags.slice(0, 4).join(', ')) + '</span></span>' +
+          '<span class="r-drive"><b>' + dshort(f.min) + '</b><span>' + f.mi + ' mi</span></span></button></li>';
+      }).join('');
+    }
+    car.innerHTML = a.map(function (f) {
+      return '<button type="button" data-id="' + f.id + '" aria-pressed="' + (state.sel === f.id) + '"><span class="cn">' + (f.order + 1) + '</span>' + esc(f.name.replace(' Orchards', '').replace(' Orchard', '').replace(' Family Farms', '').replace(' Family Farm', '').replace(' Farms', '').replace(' Farm', '')) + ' <small>' + dshort(f.min) + '</small></button>';
+    }).join('');
+  }
+  listEl.addEventListener('click', function (e) { var b = e.target.closest('.row'); if (b) select(b.getAttribute('data-id'), 'list'); });
+  car.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) select(b.getAttribute('data-id'), 'car'); });
+
+  function renderCard(f) {
+    var st = stats(f), tight = st.onSite < 160;
+    $('pName').textContent = (f.order + 1) + '. ' + f.name;
+    $('pMeta').textContent = dshort(f.min) + ' · ' + f.mi + ' mi · arrive ' + clock(st.arrive);
+    $('cardBody').innerHTML =
+      '<div><h2>' + (f.order + 1) + '. ' + esc(f.name) + '</h2><div class="sub">' + esc(f.town) + ', NY' + (f.hours ? ' &middot; ' + esc(f.hours) : '') + '</div></div>' +
+      '<div class="stats">' +
+        '<div class="stat"><small>Drive</small><b>' + dshort(f.min) + '</b><span>~' + f.mi + ' mi</span></div>' +
+        '<div class="stat"><small>Arrive</small><b>' + clock(st.arrive).replace(' ', '&nbsp;') + '</b><span>leave 12:00</span></div>' +
+        '<div class="stat"><small>On site</small><b>' + dshort(st.onSite) + '</b><span>until 5:00</span></div>' +
+      '</div>' +
+      '<button type="button" class="btn go sketch" id="pickBtn">Pick this one <span class="arr" aria-hidden="true">&rarr;</span></button>' +
+      '<p class="home">Leave at 5:00 PM and you are back in Williamsburg around ' + clock(st.home) + '. Round trip driving is about ' + dur(f.min * 2) + '.</p>' +
+      '<div class="addr"><address id="addrText">' + esc(f.addr) + '</address><button type="button" class="btn sketch" id="copyAddr">Copy</button></div>' +
+      '<div class="actions"><a class="btn sketch" href="' + dirUrl(f) + '" target="_blank" rel="noopener">Directions in Google Maps</a><button type="button" class="btn sketch" id="zoomFarm">Zoom to farm</button></div>' +
+      '<div class="sect"><h3>Besides picking</h3><ul class="chips">' + f.tags.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="sect"><h3>Nearby</h3><p>' + esc(f.near) + '</p></div>' +
+      (f.caution ? '<div class="note">' + esc(f.caution) + '</div>' : '') +
+      (tight ? '<div class="note">Short day: you would have under 2 h 40 min on site.</div>' : '') ;
+    $('copyAddr').addEventListener('click', function (e) { copyText(f.name + ', ' + f.addr).then(function (ok) { var b = e.currentTarget; b.textContent = ok ? 'Copied' : 'Select text'; if (!ok) selectAddr(); setTimeout(function () { b.textContent = 'Copy'; }, 1400); }); });
+    $('zoomFarm').addEventListener('click', function () { userMoved = true; animateTo(centerOn(f.xy, 160)); });
+    $('pickBtn').addEventListener('click', function () { pick(f); });
+  }
+  function selectAddr() { var a = $('addrText'); if (a) { var r = document.createRange(); r.selectNodeContents(a); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } }
+  function copyText(text) {
+    return new Promise(function (resolve) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { resolve(true); }, function () { resolve(false); });
+        else resolve(false);
+      } catch (err) { resolve(false); }
+    });
+  }
+  function pick(f) {
+    var msg = 'My pick for apple day: ' + f.name + ' (' + f.town + '), about ' + dur(f.min) + ' each way.';
+    var box = $('pickBox'), inp = $('pickText');
+    inp.value = msg; box.hidden = false; syncSheetVar();
+    $('pickLabel').textContent = 'Copy this and send it to zz';
+    inp.focus(); inp.select();
+    copyText(msg).then(function (ok) { $('pickLabel').textContent = ok ? 'Copied. Paste it to zz' : 'Select and copy this, then send it to zz'; });
+  }
+  $('pickX').addEventListener('click', function () { $('pickBox').hidden = true; });
+  $('pPick').addEventListener('click', function () { if (state.sel) pick(BYID[state.sel]); });
+
+  /* ---------------- sheet (phone) ---------------- */
+  var grip = $('grip'), gripY = null;
+  function setSheet(m, noMap) {
+    if (!mq.matches) return;
+    state.sheet = m;
+    sheet.setAttribute('data-open', m === 'full' ? 'true' : (m === 'half' ? 'half' : 'false'));
+    grip.setAttribute('aria-expanded', m === 'peek' ? 'false' : 'true');
+    $('gripLabel').textContent = m === 'peek' ? 'Details and all 14 orchards' : (m === 'half' ? 'Pull up for the full list' : 'Back to the map');
+    if (m !== 'full') sheetBody.scrollTop = 0;
+    measure(); syncSheetVar();
+    setTimeout(function () {
+      measure(); syncSheetVar();
+      if (!noMap && m !== 'full' && state.sel) { var f = BYID[state.sel]; if (!separateIfCrowded(f)) animateTo(centerOn(f.xy, vb.w)); }
+    }, 280);
+  }
+  var ORDER = ['peek', 'half', 'full'];
+  function stepSheet(dir) {
+    var i = ORDER.indexOf(state.sheet);
+    setSheet(ORDER[dir === 0 ? (i + 1) % 3 : Math.max(0, Math.min(2, i + dir))]);
+  }
+  grip.addEventListener('pointerdown', function (e) { gripY = e.clientY; try { grip.setPointerCapture(e.pointerId); } catch (err) {} });
+  grip.addEventListener('pointerup', function (e) {
+    if (gripY === null) return;
+    var dy = e.clientY - gripY; gripY = null;
+    if (Math.abs(dy) < 10) stepSheet(0); else stepSheet(dy < 0 ? 1 : -1);
+  });
+  grip.addEventListener('pointercancel', function () { gripY = null; });
+  grip.addEventListener('click', function (e) { if (e.detail === 0) stepSheet(0); });
+
+  function place() {
+    if (mq.matches) { sheetBody.appendChild(card); sheetBody.appendChild(listpanel); }
+    else { document.body.appendChild(card); leftEl.appendChild(listpanel); }
+  }
+  function relayout() {
+    place(); measure(); syncSheetVar();
+    if (!userMoved) showAll(false); else apply();
+  }
+
+  /* ---------------- selection ---------------- */
+  function select(id, from) {
+    var f = BYID[id]; if (!f) return;
+    state.sel = id;
+    FARMS.forEach(function (x) { x.pin.classList.toggle('sel', x.id === id); x.entry.s = x.id === id ? 1.25 : 1; });
+    gPins.appendChild(f.pin);
+    route.style.display = '';
+    var mx = (ORIGIN_XY[0] + f.xy[0]) / 2, my2 = (ORIGIN_XY[1] + f.xy[1]) / 2;
+    var nx = -(f.xy[1] - ORIGIN_XY[1]) * 0.08, ny = (f.xy[0] - ORIGIN_XY[0]) * 0.08;
+    route.setAttribute('d', 'M' + ORIGIN_XY[0].toFixed(1) + ' ' + ORIGIN_XY[1].toFixed(1) + ' Q' + (mx + nx).toFixed(1) + ' ' + (my2 + ny).toFixed(1) + ' ' + f.xy[0].toFixed(1) + ' ' + f.xy[1].toFixed(1));
+    Array.prototype.forEach.call(document.querySelectorAll('.row, .car button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-id') === id ? 'true' : 'false'); });
+    renderCard(f);
+    apply();
+    if (from) {
+      if (mq.matches) setSheet('half', true);
+      measure();
+      if (!separateIfCrowded(f)) { if (mq.matches) animateTo(centerOn(f.xy, vb.w)); else ensureVisible(f); }
+      if (mq.matches) {
+        var chip = car.querySelector('button[data-id="' + id + '"]');
+        if (chip && chip.scrollIntoView) chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+      } else if (from !== 'list') {
+        var row = listEl.querySelector('.row[data-id="' + id + '"]');
+        if (row) row.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+      }
+    }
+  }
+
+  /* controls */
+  Array.prototype.forEach.call(document.querySelectorAll('.seg button'), function (b) {
+    b.addEventListener('click', function () {
+      state.sort = b.getAttribute('data-sort');
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button'), function (x) { x.setAttribute('aria-checked', x === b ? 'true' : 'false'); });
+      renderList();
+    });
+  });
+  $('townOnly').addEventListener('change', function (e) { state.townOnly = e.target.checked; renderList(); });
+
+  /* opening note */
+  var splash = $('splash');
+  function closeSplash() {
+    if (splash.hidden) return;
+    splash.classList.add('gone');
+    setTimeout(function () { splash.hidden = true; measure(); if (!userMoved) showAll(false); }, reduce ? 0 : 300);
+  }
+  $('splashGo').addEventListener('click', closeSplash);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSplash(); });
+
+  /* boot */
+  renderList();
+  place();
+  renderCard(FARMS[0]);
+  measure();
+  showAll(false);
+  select(FARMS[0].id, null);
+  syncSheetVar();
+  try { mq.addEventListener('change', relayout); } catch (err) { mq.addListener(relayout); }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { measure(); syncSheetVar(); if (!userMoved) showAll(false); else apply(); }).observe(svg);
+  } else {
+    window.addEventListener('resize', relayout);
+  }
+  setTimeout(function () { measure(); syncSheetVar(); if (!userMoved) showAll(false); }, 250);
+})();
+</script>
+
+</body>
+</html>
